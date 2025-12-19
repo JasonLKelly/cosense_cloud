@@ -1,0 +1,50 @@
+version: "3.9"
+
+services:
+  kafka:
+    image: bitnami/kafka:latest
+    container_name: cosense_kafka
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    depends_on:
+      - zookeeper
+
+  zookeeper:
+    image: bitnami/zookeeper:latest
+    container_name: cosense_zookeeper
+    environment:
+      - ALLOW_ANONYMOUS_LOGIN=yes
+
+  simulator:
+    build: ./simulator
+    container_name: cosense_simulator
+    env_file: .env
+    depends_on:
+      - kafka
+
+  stream-processor:
+    build: ./stream-processor
+    container_name: cosense_stream_processor
+    env_file: .env
+    depends_on:
+      - kafka
+
+  api-gateway:
+    build: ./api-gateway
+    container_name: cosense_api_gateway
+    env_file: .env
+    ports:
+      - "8080:8080"
+    depends_on:
+      - kafka
+
+  control-center:
+    build: ./control-center
+    container_name: cosense_control_center
+    env_file: .env
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api-gateway
+
