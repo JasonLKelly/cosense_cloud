@@ -20,9 +20,9 @@ The project is considered **done** when:
 - Control Center UI shows robots and humans moving in Zone C
 - Robots emit **SLOW / STOP / REROUTE** decisions with reason codes
 - Operator can ask:
-  1. “Why did robot X stop / slow / reroute?”
-  2. “What’s happening in Zone C?”
-  3. “Is this an isolated event, or part of a pattern?”
+  1. "Why did robot X stop / slow / reroute?"
+  2. "What's happening in Zone C?"
+  3. "Is this an isolated event, or part of a pattern?"
 - Gemini answers are grounded, structured, and non-hallucinatory
 - Datadog shows **decision-quality metrics**, not just infra health
 - Repo is clean, documented, and reproducible
@@ -32,137 +32,188 @@ Anything beyond this is optional.
 
 ---
 
-## Phase 0 — Lock the Contract (½ day)
+## Phase 0 — Lock the Contract ✅ DONE
 
 **Goal:** prevent thrash.
 
 ### Tasks
-- [ ] Freeze event vocabulary:
-  - actions: `SLOW`, `STOP`, `REROUTE`
-  - reason codes (max 6)
-- [ ] Freeze operator questions (exact wording)
-- [ ] Freeze supported scenario toggles:
-  - vision degraded
-  - connectivity degraded
+- [x] Freeze event vocabulary:
+  - actions: `SLOW`, `STOP`, `REROUTE`, `CONTINUE`
+  - reason codes: `CLOSE_PROXIMITY`, `HIGH_RELATIVE_SPEED`, `LOW_VISIBILITY`, `HIGH_CONGESTION`, `BLE_PROXIMITY_DETECTED`, `SENSOR_DISAGREEMENT`
+- [x] Freeze operator questions (exact wording)
+- [x] Freeze supported scenario toggles:
+  - visibility: normal/degraded/poor
+  - connectivity: normal/degraded/offline
 
 ### Deliverables
-- `docs/api.md` (schemas only, no code)
-- checklist of non-goals
-
-**STOP HERE until this is done.**
+- [x] `schemas/` package with Pydantic models
+- [x] CLAUDE.md with key concepts
 
 ---
 
-## Phase 1 — Headless Simulator (1–1.5 days)
+## Phase 1 — Headless Simulator ✅ DONE
 
 **Goal:** deterministic telemetry source.
 
-### Scope (minimal)
-- 1 zone (Zone C)
-- 2 robots
-- 2 humans
-- simple kinematics (x, y, velocity)
+### Scope
+- 1 zone (Zone C) - expandable
+- 2+ robots (scalable via `/scenario/scale`)
+- 2+ humans (scalable via `/scenario/scale`)
+- simple kinematics (x, y, velocity, heading)
 
 ### Tasks
-- [ ] Simulator service emits:
+- [x] Simulator service emits:
   - `robot.telemetry`
   - `human.telemetry`
   - `zone.context`
-- [ ] Synthetic sensors:
+- [x] Synthetic sensors:
   - ultrasonic distance
   - BLE RSSI (distance + noise)
-- [ ] Scenario toggles via REST:
-  - `/scenario/start`
-  - `/scenario/toggle`
+- [x] Scenario control via REST:
+  - `/scenario/start`, `/scenario/stop`, `/scenario/reset`
+  - `/scenario/toggle` (visibility, connectivity)
+  - `/scenario/scale` (add robots/humans)
 
 ### Deliverables
-- simulator container
-- README explaining signals
-- deterministic seed mode
-
-**No UI. No Kafka logic here.**
+- [x] `simulator/` - FastAPI + Dockerfile
+- [x] Supports Confluent Cloud via env vars
 
 ---
 
-## Phase 2 — Streaming Fusion & Decisions (1.5–2 days)
+## Phase 2 — Streaming Fusion & Decisions ✅ DONE
 
 **Goal:** real-time coordination logic.
 
 ### Tasks
-- [ ] Consume simulator topics via Confluent Platform
-- [ ] Windowed join:
-  - robot ↔ nearest human ↔ zone
-- [ ] Compute:
-  - risk score (simple formula)
-  - action mapping
-- [ ] Emit:
-  - `coordination.state`
-  - `coordination.decisions`
+- [x] Consume simulator topics via QuixStreams
+- [x] State tracking for robot/human/zone
+- [x] Compute:
+  - risk score (weighted formula)
+  - action mapping (CONTINUE/SLOW/STOP/REROUTE)
+- [x] Emit:
+  - `coordination.decisions` with reason codes
 
-### Constraints
-- All logic must be explainable
-- No ML here — pure rules + thresholds
-- Attach `reason_codes` to every decision
+### Implementation
+- QuixStreams for stream processing
+- In-memory state store for windowed joins
+- Risk scoring with 6 weighted factors
 
 ### Deliverables
-- stream processor container
-- unit tests for decision mapping
-- schema registered in Schema Registry
+- [x] `stream-processor/` - QuixStreams + Dockerfile
+- [x] Risk scoring logic in `src/risk.py`
 
 ---
 
-## Phase 3 — Control Center UI (1–1.5 days)
+## Phase 3 — Control Center UI ✅ DONE (Basic)
 
 **Goal:** operator-grade situational awareness.
 
-### UI Features (ONLY THESE)
-- 2D map (canvas or SVG)
-- robots + humans + trails
-- current action badge per robot
-- incident timeline (decisions only)
+### UI Features Implemented
+- [x] 2D map with robots (colored by action) and humans
+- [x] Real-time position updates (polling)
+- [x] Recent decisions panel
+- [x] Start/Stop/Reset buttons
+- [x] Zone status display
 
-### Tasks
-- [ ] Subscribe to state + decision streams
-- [ ] Render positions and actions
-- [ ] Add scenario toggle buttons
-- [ ] Add “Ask a question” panel (stubbed)
+### Still TODO
+- [ ] Add scenario toggle buttons (visibility, connectivity)
+- [ ] Add Q&A panel for Gemini copilot
+- [ ] Robot trails
+- [ ] Better styling
 
 ### Deliverables
-- Control Center running on `localhost:3000`
-- Screenshot-ready UI
-
-**No styling rabbit holes. Functional > pretty.**
+- [x] `control-center-webapp/` - React + TypeScript + Vite + Dockerfile
+- [x] Running on `localhost:3000`
 
 ---
 
-## Phase 4 — Gemini Operator Copilot (1 day)
+## Phase 4 — Gemini Operator Copilot 🔄 IN PROGRESS
 
-**Goal:** explainability with guardrails.
+**Goal:** agentic explainability with tool calling.
+
+### Architecture
+
+```
+┌──────────────────────────────────────────────────────────┐
+│               control-center-webapp                       │
+│   [Ask anything...                              ] ▶       │
+│   [verbose: ✓] → get_robot_state(robot-1) ✓               │
+│                → get_nearby_entities(robot-1) ✓           │
+│   Answer: Robot-1 stopped because...                      │
+└──────────────────────────────────────────────────────────┘
+                            │
+                    POST /ask {question}
+                            ▼
+┌──────────────────────────────────────────────────────────┐
+│                        backend                            │
+│                                                           │
+│   google-genai SDK + Automatic Function Calling           │
+│   ┌────────────────────────────────────────────────────┐  │
+│   │ response = client.models.generate_content(         │  │
+│   │     model='gemini-2.0-flash',                      │  │
+│   │     contents=question,                             │  │
+│   │     config=GenerateContentConfig(                  │  │
+│   │         system_instruction=SYSTEM_PROMPT,          │  │
+│   │         tools=[get_robot_state, get_nearby_entities│  │
+│   │                get_decisions, get_zone_context,    │  │
+│   │                get_scenario_status, analyze_patterns│ │
+│   │     )                                              │  │
+│   │ )                                                  │  │
+│   │ # SDK handles entire agent loop automatically      │  │
+│   └────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────┘
+```
+
+### Tool Definitions (Medium Granularity)
+
+Six Python functions passed directly to Gemini. SDK auto-generates schemas from docstrings + type hints.
+
+| Tool | Purpose | Source |
+|------|---------|--------|
+| `get_robot_state(robot_id, window_sec)` | Position, velocity, sensors, trajectory | Kafka |
+| `get_nearby_entities(robot_id, radius_m)` | Humans/robots near a robot | Kafka |
+| `get_decisions(robot_id?, zone_id?, limit)` | Recent coordination decisions | Kafka |
+| `get_zone_context(zone_id)` | Visibility, congestion, counts | Kafka/Simulator |
+| `get_scenario_status()` | Simulation state, toggles | Simulator REST |
+| `analyze_patterns(window_sec, group_by)` | Aggregated stats for patterns | Kafka |
+
+### SDK Migration
+
+| Old (deprecated) | New (google-genai) |
+|------------------|-------------------|
+| `google-generativeai` | `google-genai` |
+| `import google.generativeai as genai` | `from google import genai` |
+| `genai.configure(api_key=...)` | `genai.Client(vertexai=True, project=..., location=...)` |
+| Manual agent loop | SDK automatic function calling |
+| `FunctionDeclaration` schemas | Plain Python functions with docstrings |
 
 ### Tasks
-- [ ] Define tool interface:
-  - fetch recent decisions
-  - fetch zone summary
-- [ ] Define structured output schema:
-  - answer
-  - evidence
-  - confidence
-- [ ] Implement 3 fixed questions
-- [ ] Refuse to answer if data missing
+- [x] Rename `api-gateway/` → `backend/`
+- [x] Rename `control-center/` → `control-center-webapp/`
+- [x] Migrate to `google-genai` SDK
+- [ ] Implement KafkaHistoryReader for tool queries (using in-memory buffer for now)
+- [x] Implement 6 tool functions
+- [x] Update `/ask` endpoint to use automatic function calling
+- [ ] Add Q&A panel to webapp (text input, answer display)
+- [ ] Add verbose mode toggle (show tool calls)
+- [ ] Test with Vertex AI auth (not API key)
 
 ### Constraints
-- Gemini never makes decisions
-- Gemini never invents facts
-- All answers cite telemetry
+- Gemini decides which tools to call (no frontend question-type detection)
+- Gemini never makes decisions or invents facts
+- All answers must cite evidence from tool results
+- System instructions enforce grounding
 
 ### Deliverables
-- `llm/prompts/`
-- `llm/schemas/`
-- working Q&A in UI
+- [ ] `backend/src/gemini.py` - Simplified with automatic function calling
+- [ ] `backend/src/tools.py` - 6 tool functions
+- [ ] `backend/src/kafka_reader.py` - Kafka history queries
+- [ ] `control-center-webapp/` - Q&A panel component
+- [ ] Working end-to-end: question → tools → answer
 
 ---
 
-## Phase 5 — Datadog Observability (½–1 day)
+## Phase 5 — Datadog Observability ⏳ TODO
 
 **Goal:** prove this is a real system.
 
@@ -173,10 +224,10 @@ Anything beyond this is optional.
 - uncertainty / conflict rate
 
 ### Tasks
-- [ ] Instrument simulator, processor, gateway
+- [ ] Instrument simulator, stream-processor, backend
 - [ ] Create Datadog dashboard:
-  - “Decision Quality”
-  - “Pipeline Health”
+  - "Decision Quality"
+  - "Pipeline Health"
 - [ ] Add screenshots to `/docs`
 
 ### Deliverables
@@ -185,7 +236,7 @@ Anything beyond this is optional.
 
 ---
 
-## Phase 6 — ElevenLabs (½ day)
+## Phase 6 — ElevenLabs ⏳ TODO (CUT IF BEHIND)
 
 **Goal:** polish, not complexity.
 
@@ -200,19 +251,25 @@ Anything beyond this is optional.
 
 ---
 
-## Phase 7 — Reproducibility & Cleanup (½ day)
+## Phase 7 — Reproducibility & Cleanup ⏳ TODO
 
 **Goal:** judge-proof repo.
 
 ### Tasks
-- [ ] `docker compose up` works from clean clone
-- [ ] `.env.example` complete
+- [x] `docker compose up` works from clean clone
+- [x] `.env.example` complete
 - [ ] README quickstart verified
 - [ ] Remove dead code and TODOs
 
+### Deployment Requirements
+- [x] Runnable locally via Docker Compose
+- [x] Each service in a separate container (Cloud Run-ready)
+- [x] Same containers deployable to Google Cloud Run with no code changes
+- [x] Environment-based configuration (3 Confluent modes supported)
+
 ---
 
-## Phase 8 — Demo & Submission (½ day)
+## Phase 8 — Demo & Submission ⏳ TODO
 
 **Goal:** win.
 
@@ -227,10 +284,40 @@ Anything beyond this is optional.
 
 ---
 
+## Service Naming
+
+| Directory | Purpose |
+|-----------|---------|
+| `simulator/` | Headless world engine, telemetry generation |
+| `stream-processor/` | Kafka stream processing, risk scoring |
+| `backend/` | HTTP API, Gemini copilot, tool execution |
+| `control-center-webapp/` | React operator UI |
+| `schemas/` | Shared Pydantic models |
+
+---
+
+## Current Status Summary
+
+| Phase | Status | Notes |
+|-------|--------|-------|
+| 0. Lock Contract | ✅ Done | Schemas defined in `schemas/` |
+| 1. Simulator | ✅ Done | Working, scalable |
+| 2. Stream Processor | ✅ Done | QuixStreams, risk scoring |
+| 3. Control Center UI | ✅ Basic | Needs Gemini panel, polish |
+| 4. Gemini Copilot | 🔄 Partial | Needs SDK migration + tool calling |
+| 5. Datadog | ⏳ TODO | |
+| 6. ElevenLabs | ⏳ TODO | Cut if behind |
+| 7. Cleanup | 🔄 Partial | Docker works, needs README |
+| 8. Demo | ⏳ TODO | |
+
+**Next Priority:** Phase 4 (Gemini) - migrate to google-genai SDK, implement tools, wire up UI
+
+---
+
 ## Schedule Reality Check
 
-**Minimum viable path:** ~7–9 focused days  
-**Comfortable path:** ~10–12 days  
+**Minimum viable path:** ~7–9 focused days
+**Comfortable path:** ~10–12 days
 **Stretch polish:** only if ahead of schedule
 
 If behind:
@@ -242,7 +329,7 @@ If behind:
 
 ## Guiding Principle
 
-> A simple system that works end-to-end beats a sophisticated system that’s half-built.
+> A simple system that works end-to-end beats a sophisticated system that's half-built.
 
 Build for **clarity, determinism, and explanation**.
 

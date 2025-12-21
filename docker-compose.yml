@@ -1,6 +1,5 @@
-version: "3.9"
-
 services:
+  # ============ Confluent Platform ============
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.0
     hostname: zookeeper
@@ -24,6 +23,12 @@ services:
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
 
   schema-registry:
     image: confluentinc/cp-schema-registry:7.6.0
@@ -37,10 +42,10 @@ services:
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: broker:29092
 
-  control-center:
+  kafka-ui:
     image: confluentinc/cp-enterprise-control-center:7.6.0
-    hostname: control-center
-    container_name: cosense_control_center_kafka
+    hostname: kafka-ui
+    container_name: cosense_kafka_ui
     depends_on:
       - broker
       - schema-registry
@@ -53,37 +58,57 @@ services:
       CONTROL_CENTER_INTERNAL_TOPICS_PARTITIONS: 1
       CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_PARTITIONS: 1
 
-
+  # ============ CoSense Services ============
   simulator:
     build: ./simulator
+    hostname: simulator
     container_name: cosense_simulator
     env_file: .env
+    environment:
+      KAFKA_BROKERS: broker:29092
+    ports:
+      - "8000:8000"
     depends_on:
-      - broker
+      broker:
+        condition: service_healthy
 
   stream-processor:
     build: ./stream-processor
+    hostname: stream-processor
     container_name: cosense_stream_processor
     env_file: .env
+    environment:
+      KAFKA_BROKERS: broker:29092
     depends_on:
-      - broker
+      broker:
+        condition: service_healthy
+      simulator:
+        condition: service_started
 
-  api-gateway:
-    build: ./api-gateway
-    container_name: cosense_api_gateway
+  backend:
+    build: ./backend
+    hostname: backend
+    container_name: cosense_backend
     env_file: .env
+    environment:
+      KAFKA_BROKERS: broker:29092
+      SIMULATOR_URL: http://simulator:8000
     ports:
       - "8080:8080"
     depends_on:
-      - broker
+      broker:
+        condition: service_healthy
+      simulator:
+        condition: service_started
 
-  control-center:
-    build: ./control-center
-    container_name: cosense_control_center
+  control-center-webapp:
+    build: ./control-center-webapp
+    hostname: control-center-webapp
+    container_name: cosense_control_center_webapp
     env_file: .env
+    environment:
+      VITE_API_URL: http://localhost:8080
     ports:
       - "3000:3000"
     depends_on:
-      - api-gateway
-
-
+      - backend
