@@ -104,26 +104,34 @@ Anything beyond this is optional.
 
 ---
 
-## Phase 3 — Control Center UI ✅ DONE (Basic)
+## Phase 3 — Control Center UI 🔄 IN PROGRESS
 
-**Goal:** operator-grade situational awareness.
+**Goal:** operator-grade situational awareness + Gemini copilot integration.
 
-### UI Features Implemented
-- [x] 2D map with robots (colored by action) and humans
+**UI Spec:** See `control-center-webapp/UI_SPEC.md`
+
+### V1 Build Priority
+
+1. **Map with live entities** ✅ (basic version done)
+2. **Entity drawer on robot click** (stop/start buttons)
+3. **Bottom drawer: Ask Gemini** (free-form input + response)
+4. **Right drawer: Metrics panel** (zone stats + scenario toggles)
+5. **Verbose mode toggle** (show tool calls)
+
+### Tasks
+- [x] Basic map with robots/humans
 - [x] Real-time position updates (polling)
-- [x] Recent decisions panel
 - [x] Start/Stop/Reset buttons
-- [x] Zone status display
-
-### Still TODO
-- [ ] Add scenario toggle buttons (visibility, connectivity)
-- [ ] Add Q&A panel for Gemini copilot
-- [ ] Robot trails
-- [ ] Better styling
+- [ ] Click robot → Entity Drawer with details + stop/start
+- [ ] Bottom drawer: Ask Gemini panel
+- [ ] Right drawer: Metrics + scenario toggles
+- [ ] Verbose mode for tool calls
+- [ ] Tailwind CSS styling
 
 ### Deliverables
 - [x] `control-center-webapp/` - React + TypeScript + Vite + Dockerfile
 - [x] Running on `localhost:3000`
+- [ ] `UI_SPEC.md` - design spec
 
 ---
 
@@ -205,12 +213,10 @@ Anything beyond this is optional.
 - [x] Rename `api-gateway/` → `backend/`
 - [x] Rename `control-center/` → `control-center-webapp/`
 - [x] Migrate to `google-genai` SDK
-- [ ] Implement KafkaHistoryReader for tool queries (using in-memory buffer for now)
 - [x] Implement 11 tool functions (6 query + 3 simulation + 2 robot control)
 - [x] Update `/ask` endpoint to use automatic function calling
-- [ ] Add Q&A panel to webapp (text input, answer display)
-- [ ] Add verbose mode toggle (show tool calls)
-- [ ] Test with Vertex AI auth (not API key)
+- [ ] Implement KafkaHistoryReader for tool queries (using in-memory buffer for now)
+- [ ] Test with Vertex AI auth
 
 ### Constraints
 - Gemini decides which tools to call (no frontend question-type detection)
@@ -315,16 +321,16 @@ Anything beyond this is optional.
 | Phase | Status | Notes |
 |-------|--------|-------|
 | 0. Lock Contract | ✅ Done | Schemas defined in `schemas/` |
-| 1. Simulator | ✅ Done | Working, scalable |
+| 1. Simulator | ✅ Done | Working, scalable, individual robot control |
 | 2. Stream Processor | ✅ Done | QuixStreams, risk scoring |
-| 3. Control Center UI | ✅ Basic | Needs Gemini panel, polish |
-| 4. Gemini Copilot | 🔄 Partial | Needs SDK migration + tool calling |
+| 3. Control Center UI | 🔄 In Progress | Basic map done, need drawers + Gemini |
+| 4. Gemini Copilot | ✅ Done | 11 tools, auto function calling |
 | 5. Datadog | ⏳ TODO | |
 | 6. ElevenLabs | ⏳ TODO | Cut if behind |
 | 7. Cleanup | 🔄 Partial | Docker works, needs README |
 | 8. Demo | ⏳ TODO | |
 
-**Next Priority:** Phase 4 (Gemini) - migrate to google-genai SDK, implement tools, wire up UI
+**Next Priority:** Phase 3 - Complete control center UI with Gemini integration
 
 ---
 
