@@ -37,6 +37,9 @@ class Robot:
     # Manual override - when True, stream-processor decisions are ignored
     manual_override: bool = False
 
+    # Pause at destination
+    idle_until: float = 0.0  # sim_time when robot should resume
+
     def set_path(self, path: list[tuple[float, float]], destination: str | None = None):
         """Set a new path for the robot to follow."""
         self.path = path
@@ -53,7 +56,7 @@ class Robot:
         self.path = []
         self.path_index = 0
 
-    def update(self, dt: float, world_width: float, world_height: float, rng: random.Random):
+    def update(self, dt: float, world_width: float, world_height: float, rng: random.Random, sim_time: float = 0.0):
         """Update position based on current state and target/path."""
         max_speed = 2.0  # m/s
         acceleration = 1.0  # m/s^2
@@ -65,6 +68,12 @@ class Robot:
             return
         elif self.commanded_action == "SLOW":
             max_speed = 0.5
+
+        # Check if paused at destination
+        if sim_time < self.idle_until:
+            self.velocity = 0.0
+            self.motion_state = "stopped"
+            return
 
         # Get current target
         target_x = self.target_x
@@ -87,7 +96,8 @@ class Robot:
                 self.path_index += 1
                 self.target_x, self.target_y = self.path[self.path_index]
             else:
-                # Reached end of path - signal that we need a new destination
+                # Reached end of path - pause for 1-10 seconds, then signal for new destination
+                self.idle_until = sim_time + rng.uniform(1.0, 10.0)
                 self.path = []
                 self.path_index = 0
                 self.target_x = None

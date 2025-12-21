@@ -2,7 +2,8 @@
 
 This document defines a **practical, time-boxed work plan** to complete the CoSense Cloud project for the Google AI Partner Catalyst challenge.
 
-The goal is to deliver a **working, reproducible, end-to-end demo** by the submission deadline, with clear sponsor alignment and a strong demo narrative.
+**Challenge Selected: Confluent**
+> "Unleash the power of AI on data in motion! Build a next-generation AI application using Confluent and Google Cloud. Apply advanced AI/ML models to any real-time data stream to generate predictions, create dynamic experiences, or solve a compelling problem in a novel way."
 
 This plan assumes:
 - limited time (day job)
@@ -19,14 +20,12 @@ The project is considered **done** when:
 - `docker compose up --build` launches the full system
 - Control Center UI shows robots and humans moving in Zone C
 - Robots emit **SLOW / STOP / REROUTE** decisions with reason codes
-- Operator can ask:
-  1. "Why did robot X stop / slow / reroute?"
-  2. "What's happening in Zone C?"
-  3. "Is this an isolated event, or part of a pattern?"
-- Gemini answers are grounded, structured, and non-hallucinatory
-- Datadog shows **decision-quality metrics**, not just infra health
+- **Gemini monitors streaming data and proactively alerts** (agentic AI pattern)
+- Operator can ask any question; Gemini answers with grounded evidence
+- **Pipeline runs on Confluent Cloud** (not just local Docker)
+- **Decisions stream to BigQuery** for real-time analytics
 - Repo is clean, documented, and reproducible
-- A 2–3 minute demo video can be recorded without live debugging
+- A 3-minute demo video emphasizes "AI on data in motion"
 
 Anything beyond this is optional.
 
@@ -102,203 +101,123 @@ Anything beyond this is optional.
 - [x] `stream-processor/` - QuixStreams + Dockerfile
 - [x] Risk scoring logic in `src/risk.py`
 
-### Decision Logic Detail
-
-The stream-processor computes a **risk score** (0.0-1.0) using weighted factors:
-
-| Factor | Weight | Source |
-|--------|--------|--------|
-| Proximity to nearest human | 0.35 | Position calculation |
-| Relative velocity (closing speed) | 0.25 | Velocity vectors |
-| Visibility conditions | 0.15 | Zone context |
-| BLE proximity signal | 0.10 | Robot sensors |
-| Congestion level | 0.10 | Zone context |
-| Sensor disagreement | 0.05 | Ultrasonic vs BLE |
-
-**Action Thresholds:**
-- `STOP`: risk_score >= 0.8
-- `SLOW`: risk_score >= 0.5
-- `REROUTE`: risk_score >= 0.3 AND HIGH_CONGESTION present
-- `CONTINUE`: otherwise
-
-**Reason Codes:** Each factor can trigger a reason code:
-- `CLOSE_PROXIMITY`: Human within 2m (critical) or 5m (warning)
-- `HIGH_RELATIVE_SPEED`: Closing speed > 1 m/s
-- `LOW_VISIBILITY`: Zone visibility degraded or poor
-- `HIGH_CONGESTION`: Congestion level > 0.6
-- `BLE_PROXIMITY_DETECTED`: Strong BLE signal (RSSI > -60 dBm)
-- `SENSOR_DISAGREEMENT`: Ultrasonic and BLE disagree on proximity
-
-**Current Status:** Decisions are computed, emitted to Kafka, AND applied to simulator via HTTP POST to `/decision`. Robots now actually SLOW/STOP/REROUTE based on risk scores.
-
 ---
 
 ## Phase 3 — Control Center UI ✅ DONE
 
 **Goal:** operator-grade situational awareness + Gemini copilot integration.
 
-### V1 Build Priority
-
-1. **Map with live entities** ✅
-2. **Entity drawer on robot click** ✅
-3. **Bottom drawer: Ask Gemini** ✅
-4. **Right drawer: Metrics panel** ✅
-5. **Verbose mode toggle** ✅
-
 ### Completed Tasks
-- [x] Warehouse map with zones, racks, conveyors, workstations (from JSON)
-- [x] A* pathfinding for robot navigation
+- [x] Warehouse map with zones, racks, conveyors, workstations
 - [x] Real-time position updates (4Hz polling)
-- [x] Start/Stop/Reset buttons with parameter dialog
-- [x] Click robot → Entity Drawer with details + stop/start
-- [x] Destination display in robot info and target marker on map
-- [x] Bottom drawer: Ask Gemini panel with response display
-- [x] Right drawer: Zone stats, scenario toggles, collapsible decisions, robot grid
-- [x] Verbose mode for tool calls
-- [x] Robot grid with color-coded state (green/yellow/red/purple)
-- [x] Collapsible sections (stops polling when collapsed)
+- [x] Start/Stop/Reset buttons
+- [x] Click robot → Entity Drawer with details
+- [x] Bottom drawer: Ask Gemini panel
+- [x] Right drawer: Zone stats, scenario toggles, decisions
 - [x] Dark theme CSS styling
 
 ### Deliverables
 - [x] `control-center-webapp/` - React + TypeScript + Vite + Dockerfile
 - [x] Running on `localhost:3000`
-- [x] `maps/zone-c.json` - Shared warehouse map definition
 
 ---
 
-## Phase 4 — Gemini Operator Copilot 🔄 IN PROGRESS
+## Phase 4 — Gemini Operator Copilot ✅ DONE
 
 **Goal:** agentic explainability with tool calling.
 
-### Architecture
-
-```
-┌──────────────────────────────────────────────────────────┐
-│               control-center-webapp                       │
-│   [Ask anything...                              ] ▶       │
-│   [verbose: ✓] → get_robot_state(robot-1) ✓               │
-│                → get_nearby_entities(robot-1) ✓           │
-│   Answer: Robot-1 stopped because...                      │
-└──────────────────────────────────────────────────────────┘
-                            │
-                    POST /ask {question}
-                            ▼
-┌──────────────────────────────────────────────────────────┐
-│                        backend                            │
-│                                                           │
-│   google-genai SDK + Automatic Function Calling           │
-│   ┌────────────────────────────────────────────────────┐  │
-│   │ response = client.models.generate_content(         │  │
-│   │     model='gemini-2.0-flash',                      │  │
-│   │     contents=question,                             │  │
-│   │     config=GenerateContentConfig(                  │  │
-│   │         system_instruction=SYSTEM_PROMPT,          │  │
-│   │         tools=[get_robot_state, get_nearby_entities│  │
-│   │                get_decisions, get_zone_context,    │  │
-│   │                get_scenario_status, analyze_patterns│ │
-│   │     )                                              │  │
-│   │ )                                                  │  │
-│   │ # SDK handles entire agent loop automatically      │  │
-│   └────────────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────┘
-```
-
-### Tool Definitions (Medium Granularity)
-
-11 Python functions passed directly to Gemini. SDK auto-generates schemas from docstrings + type hints.
-
-**Query Tools:**
-| Tool | Purpose | Source |
-|------|---------|--------|
-| `get_robot_state(robot_id, window_sec)` | Position, velocity, sensors, trajectory | Kafka |
-| `get_nearby_entities(robot_id, radius_m)` | Humans/robots near a robot | Kafka |
-| `get_decisions(robot_id?, zone_id?, limit)` | Recent coordination decisions | Kafka |
-| `get_zone_context(zone_id)` | Visibility, congestion, counts | Kafka/Simulator |
-| `get_scenario_status()` | Simulation state, toggles | Simulator REST |
-| `analyze_patterns(window_sec, group_by)` | Aggregated stats for patterns | Kafka |
-
-**Simulation Control:**
-| Tool | Purpose | Source |
-|------|---------|--------|
-| `start_simulation()` | Start the robot simulation | Simulator REST |
-| `stop_simulation()` | Stop/pause the simulation | Simulator REST |
-| `reset_simulation()` | Reset to initial state | Simulator REST |
-
-**Robot Control:**
-| Tool | Purpose | Source |
-|------|---------|--------|
-| `stop_robot(robot_id)` | Stop a specific robot | Simulator REST |
-| `start_robot(robot_id)` | Resume a specific robot | Simulator REST |
-
-### SDK Migration
-
-| Old (deprecated) | New (google-genai) |
-|------------------|-------------------|
-| `google-generativeai` | `google-genai` |
-| `import google.generativeai as genai` | `from google import genai` |
-| `genai.configure(api_key=...)` | `genai.Client(vertexai=True, project=..., location=...)` |
-| Manual agent loop | SDK automatic function calling |
-| `FunctionDeclaration` schemas | Plain Python functions with docstrings |
-
-### Tasks
-- [x] Rename `api-gateway/` → `backend/`
-- [x] Rename `control-center/` → `control-center-webapp/`
+### Completed Tasks
 - [x] Migrate to `google-genai` SDK
 - [x] Implement 11 tool functions (6 query + 3 simulation + 2 robot control)
-- [x] Update `/ask` endpoint to use automatic function calling
-- [ ] Implement KafkaHistoryReader for tool queries (using in-memory buffer for now)
-- [ ] Test with Vertex AI auth
-
-### Constraints
-- Gemini decides which tools to call (no frontend question-type detection)
-- Gemini never makes decisions or invents facts
-- All answers must cite evidence from tool results
-- System instructions enforce grounding
+- [x] Automatic function calling via SDK
+- [x] Q&A panel in UI with verbose mode
 
 ### Deliverables
-- [ ] `backend/src/gemini.py` - Simplified with automatic function calling
-- [ ] `backend/src/tools.py` - 6 tool functions
-- [ ] `backend/src/kafka_reader.py` - Kafka history queries
-- [ ] `control-center-webapp/` - Q&A panel component
-- [ ] Working end-to-end: question → tools → answer
+- [x] `backend/src/gemini.py` - Automatic function calling
+- [x] `backend/src/tools.py` - 11 tool functions
+- [x] Working end-to-end: question → tools → answer
 
 ---
 
-## Phase 5 — Datadog Observability ⏳ TODO
+## Phase 5 — Confluent Cloud Deployment ⬆️ PRIORITY
 
-**Goal:** prove this is a real system.
-
-### Metrics (MUST HAVE)
-- decision latency (end-to-end)
-- action distribution
-- near-miss rate
-- uncertainty / conflict rate
+**Goal:** demonstrate real Confluent integration (not just local Docker).
 
 ### Tasks
-- [ ] Instrument simulator, stream-processor, backend
-- [ ] Create Datadog dashboard:
-  - "Decision Quality"
-  - "Pipeline Health"
-- [ ] Add screenshots to `/docs`
+- [ ] Create Confluent Cloud cluster (free trial)
+- [ ] Configure topics: `robot.telemetry`, `human.telemetry`, `zone.context`, `coordination.decisions`
+- [ ] Test full pipeline on Confluent Cloud
+- [ ] Capture Confluent Console screenshots for submission
+- [ ] Document Confluent Cloud setup in README
+
+### Environment Variables
+```bash
+KAFKA_BROKERS=<cluster>.confluent.cloud:9092
+KAFKA_API_KEY=<key>
+KAFKA_API_SECRET=<secret>
+KAFKA_SECURITY_PROTOCOL=SASL_SSL
+KAFKA_SASL_MECHANISM=PLAIN
+```
 
 ### Deliverables
-- observability working with keys
-- graceful no-key fallback
+- [ ] Working pipeline on Confluent Cloud
+- [ ] Screenshots of Confluent Console showing topics/throughput
+- [ ] README section on Confluent Cloud setup
 
 ---
 
-## Phase 6 — ElevenLabs ⏳ TODO (CUT IF BEHIND)
+## Phase 6 — AI on Streaming Data ⭐ KEY DIFFERENTIATOR
 
-**Goal:** polish, not complexity.
+**Goal:** strengthen the "AI on data in motion" story for Confluent challenge.
+
+### 6A. Proactive Gemini Agent (High Impact, Low Effort)
+
+Transform Gemini from "answers questions" to "monitors stream and alerts proactively."
+
+```python
+# Gemini watches decision stream, alerts on patterns
+async def stream_monitor():
+    async for decision in kafka_stream("coordination.decisions"):
+        if should_alert(decision):  # e.g., repeated STOP, sensor disagreement
+            alert = await gemini.analyze(f"Investigate: {decision}")
+            push_alert_to_ui(alert)
+```
+
+**Demo line:** "I didn't ask Gemini anything. It's watching the stream and just alerted me."
 
 ### Tasks
-- [ ] Speak alert on STOP
-- [ ] Speak Gemini summary (short)
-- [ ] UI toggle for voice on/off
+- [ ] Add `/stream/monitor` endpoint that watches decisions
+- [ ] Implement alert conditions:
+  - Same robot stops 2+ times in 30 seconds
+  - SENSOR_DISAGREEMENT reason code
+  - Visibility degraded + multiple SLOW commands
+- [ ] Push proactive alerts to UI via SSE
+- [ ] Add "Gemini Alerts" panel to UI
+
+### 6B. BigQuery Sink (Medium Effort, High Demo Value)
+
+Stream decisions to BigQuery for real-time analytics + historical patterns.
+
+### Tasks
+- [ ] Set up Confluent BigQuery Sink V2 connector
+- [ ] Create BigQuery dataset: `cosense.decisions`
+- [ ] Create BigQuery continuous query for pattern detection
+- [ ] Show BigQuery dashboard in demo
+
+### 6C. Optional: Flink AI Functions (Stretch)
+
+If time permits, add Flink anomaly detection:
+```sql
+SELECT robot_id, ANOMALY_DETECT(risk_score) as is_anomaly
+FROM coordination_state;
+```
+
+**Note:** Requires Confluent Cloud early access program.
 
 ### Deliverables
-- voice demo clip
-- fallback to text-only
+- [ ] Proactive Gemini alerts working
+- [ ] BigQuery receiving streaming decisions
+- [ ] Demo shows "AI reacting to data in motion"
 
 ---
 
@@ -310,6 +229,7 @@ The stream-processor computes a **risk score** (0.0-1.0) using weighted factors:
 - [x] `docker compose up` works from clean clone
 - [x] `.env.example` complete
 - [ ] README quickstart verified
+- [ ] Add OSI license file (MIT or Apache-2.0)
 - [ ] Remove dead code and TODOs
 
 ### Deployment Requirements
@@ -322,16 +242,31 @@ The stream-processor computes a **risk score** (0.0-1.0) using weighted factors:
 
 ## Phase 8 — Demo & Submission ⏳ TODO
 
-**Goal:** win.
+**Goal:** win the Confluent challenge.
 
-### Tasks
-- [ ] Record 2–3 min demo video
-- [ ] Capture screenshots:
-  - UI
-  - Confluent Control Center
-  - Datadog dashboard
-- [ ] Final README pass
-- [ ] Devpost submission
+### Demo Script (3 minutes)
+
+| Time | Section | Key Points |
+|------|---------|------------|
+| 0:00-0:25 | Problem | Warehouse safety, operators need understanding not dashboards |
+| 0:25-0:50 | Architecture | Confluent streaming + Gemini AI |
+| 0:50-1:30 | Live Demo | Robots moving, decisions appearing, scenario toggles |
+| 1:30-2:20 | Gemini | Q&A + **proactive alerts** ("I didn't ask, it noticed") |
+| 2:20-2:45 | Tech | Confluent Cloud, BigQuery sink, real-time AI |
+| 2:45-3:00 | Close | "AI on data in motion" |
+
+### Required Screenshots
+- [ ] Control Center UI with robots moving
+- [ ] Gemini Q&A with grounded answer
+- [ ] **Confluent Cloud Console** showing topics and throughput
+- [ ] BigQuery with streaming decisions (if implemented)
+
+### Submission Checklist
+- [ ] Hosted URL (Cloud Run)
+- [ ] Public GitHub repo with OSI license
+- [ ] README with deployment instructions
+- [ ] 3-minute YouTube video
+- [ ] Devpost form completed
 
 ---
 
@@ -351,42 +286,40 @@ The stream-processor computes a **risk score** (0.0-1.0) using weighted factors:
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| 0. Lock Contract | ✅ Done | Schemas defined in `schemas/` |
-| 1. Simulator | ✅ Done | Working, scalable, individual robot control |
+| 0. Lock Contract | ✅ Done | Schemas defined |
+| 1. Simulator | ✅ Done | Working, scalable |
 | 2. Stream Processor | ✅ Done | QuixStreams, risk scoring |
-| 3. Control Center UI | ✅ Done | Full UI with map, drawers, Gemini panel |
+| 3. Control Center UI | ✅ Done | Full UI with Gemini panel |
 | 4. Gemini Copilot | ✅ Done | 11 tools, auto function calling |
-| 5. Datadog | ⏳ TODO | |
-| 6. ElevenLabs | ⏳ TODO | Cut if behind |
+| 5. Confluent Cloud | ⏳ TODO | **PRIORITY** |
+| 6. AI on Streaming | ⏳ TODO | Proactive alerts + BigQuery |
 | 7. Cleanup | 🔄 Partial | Docker works, needs README |
 | 8. Demo | ⏳ TODO | |
 
-**Remaining Work:**
-1. **Datadog instrumentation** - Decision quality metrics
-2. **README** - Quickstart and deployment instructions
-3. **Demo video** - 2-3 minute walkthrough
-
-**Next Priority:** Datadog observability or final cleanup/documentation
+**Remaining Priority Order:**
+1. **Confluent Cloud** - Must demonstrate real Confluent integration
+2. **Proactive Gemini** - "AI on data in motion" differentiator
+3. **BigQuery Sink** - Shows full Google Cloud integration
+4. **README + License** - Judge requirements
+5. **Demo video** - 3-minute walkthrough
 
 ---
 
-## Schedule Reality Check
+## What Was Cut
 
-**Minimum viable path:** ~7–9 focused days
-**Comfortable path:** ~10–12 days
-**Stretch polish:** only if ahead of schedule
-
-If behind:
-- cut ElevenLabs first
-- then cut Datadog depth
-- never cut Gemini explainability
+| Item | Reason |
+|------|--------|
+| ~~Datadog~~ | Wrong challenge (Confluent selected) |
+| ~~ElevenLabs~~ | Wrong challenge (Confluent selected) |
+| ~~Flink ML~~ | Requires early access, not essential |
 
 ---
 
 ## Guiding Principle
 
-> A simple system that works end-to-end beats a sophisticated system that's half-built.
+> "Demonstrate how real-time data unlocks real-world challenges with AI."
+> — Confluent Challenge Description
 
-Build for **clarity, determinism, and explanation**.
+Build for **streaming-first AI**, not batch analytics with a streaming wrapper.
 
-That wins hackathons.
+That wins the Confluent challenge.
