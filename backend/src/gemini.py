@@ -298,6 +298,54 @@ def reset_simulation() -> dict:
         return {"error": f"Could not reach simulator: {str(e)}"}
 
 
+def stop_robot(robot_id: str) -> dict:
+    """Stop a specific robot.
+
+    Call this when the operator asks to stop a particular robot.
+    Example: "Stop robot-1" or "Halt robot 2"
+
+    Args:
+        robot_id: The robot identifier (e.g., "robot-1", "robot-2")
+
+    Returns:
+        Confirmation that robot was stopped, or error message
+    """
+    try:
+        with httpx.Client(timeout=2.0) as client:
+            response = client.post(f"{_ctx.simulator_url}/robots/{robot_id}/stop")
+            if response.status_code == 200:
+                return response.json()
+            elif response.status_code == 404:
+                return {"error": f"Robot {robot_id} not found"}
+            return {"error": f"Simulator returned {response.status_code}"}
+    except Exception as e:
+        return {"error": f"Could not reach simulator: {str(e)}"}
+
+
+def start_robot(robot_id: str) -> dict:
+    """Start/resume a specific robot.
+
+    Call this when the operator asks to start, resume, or continue a particular robot.
+    Example: "Start robot-1" or "Resume robot 2"
+
+    Args:
+        robot_id: The robot identifier (e.g., "robot-1", "robot-2")
+
+    Returns:
+        Confirmation that robot was started, or error message
+    """
+    try:
+        with httpx.Client(timeout=2.0) as client:
+            response = client.post(f"{_ctx.simulator_url}/robots/{robot_id}/start")
+            if response.status_code == 200:
+                return response.json()
+            elif response.status_code == 404:
+                return {"error": f"Robot {robot_id} not found"}
+            return {"error": f"Simulator returned {response.status_code}"}
+    except Exception as e:
+        return {"error": f"Could not reach simulator: {str(e)}"}
+
+
 def analyze_patterns(window_sec: int = 300, group_by: str = "action") -> dict:
     """Analyze patterns in recent decisions for trend detection.
 
@@ -350,10 +398,13 @@ TOOLS = [
     get_zone_context,
     get_scenario_status,
     analyze_patterns,
-    # Control tools
+    # Simulation control tools
     start_simulation,
     stop_simulation,
     reset_simulation,
+    # Individual robot control tools
+    stop_robot,
+    start_robot,
 ]
 
 
@@ -373,18 +424,23 @@ QUERY TOOLS:
 - get_scenario_status: Get simulation status (running, entity counts, toggles)
 - analyze_patterns: Analyze decision patterns and trends
 
-CONTROL TOOLS:
+SIMULATION CONTROL TOOLS:
 - start_simulation: Start the robot simulation
 - stop_simulation: Stop/pause the simulation
 - reset_simulation: Reset simulation to initial state
 
+ROBOT CONTROL TOOLS:
+- stop_robot(robot_id): Stop a specific robot (e.g., "stop robot-1")
+- start_robot(robot_id): Resume a specific robot (e.g., "start robot-1")
+
 RULES:
 1. Use query tools to gather data before answering questions
 2. Use control tools when the operator asks to start, stop, or reset
-3. ONLY state facts that come from tool results - never invent data
-4. Cite specific values (distances, speeds, scores) as evidence
-5. If data is insufficient, say so clearly
-6. Be concise but complete
+3. For individual robot commands, use stop_robot/start_robot with the robot_id
+4. ONLY state facts that come from tool results - never invent data
+5. Cite specific values (distances, speeds, scores) as evidence
+6. If data is insufficient, say so clearly
+7. Be concise but complete
 
 When answering questions:
 - Explain WHY things happened by citing reason_codes and sensor data

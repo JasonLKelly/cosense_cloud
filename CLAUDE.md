@@ -91,7 +91,7 @@ The system consists of four main services communicating via Kafka:
 
 ### Gemini Copilot Tools
 
-The copilot uses 9 tools that Gemini calls automatically via the `google-genai` SDK:
+The copilot uses 11 tools that Gemini calls automatically via the `google-genai` SDK:
 
 **Query Tools:**
 | Tool | Purpose |
@@ -103,12 +103,18 @@ The copilot uses 9 tools that Gemini calls automatically via the `google-genai` 
 | `get_scenario_status` | Simulation state and toggles |
 | `analyze_patterns` | Aggregated stats for pattern detection |
 
-**Control Tools:**
+**Simulation Control:**
 | Tool | Purpose |
 |------|---------|
 | `start_simulation` | Start the robot simulation |
 | `stop_simulation` | Stop/pause the simulation |
 | `reset_simulation` | Reset simulation to initial state |
+
+**Robot Control:**
+| Tool | Purpose |
+|------|---------|
+| `stop_robot(robot_id)` | Stop a specific robot |
+| `start_robot(robot_id)` | Resume a specific robot |
 
 ## Key Concepts
 

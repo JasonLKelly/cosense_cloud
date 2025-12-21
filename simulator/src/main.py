@@ -189,3 +189,62 @@ async def reset_scenario():
     world = World.create(producer=producer)
 
     return {"status": "reset", "robot_count": len(world.robots), "human_count": len(world.humans)}
+
+
+# Individual robot control
+@app.post("/robots/{robot_id}/stop")
+async def stop_robot(robot_id: str):
+    """Stop a specific robot."""
+    if not world:
+        raise HTTPException(status_code=503, detail="World not initialized")
+
+    robot = next((r for r in world.robots if r.robot_id == robot_id), None)
+    if not robot:
+        raise HTTPException(status_code=404, detail=f"Robot {robot_id} not found")
+
+    robot.commanded_action = "STOP"
+    return {
+        "status": "stopped",
+        "robot_id": robot_id,
+        "commanded_action": robot.commanded_action,
+    }
+
+
+@app.post("/robots/{robot_id}/start")
+async def start_robot(robot_id: str):
+    """Resume a specific robot (set to CONTINUE)."""
+    if not world:
+        raise HTTPException(status_code=503, detail="World not initialized")
+
+    robot = next((r for r in world.robots if r.robot_id == robot_id), None)
+    if not robot:
+        raise HTTPException(status_code=404, detail=f"Robot {robot_id} not found")
+
+    robot.commanded_action = "CONTINUE"
+    return {
+        "status": "started",
+        "robot_id": robot_id,
+        "commanded_action": robot.commanded_action,
+    }
+
+
+@app.get("/robots/{robot_id}")
+async def get_robot(robot_id: str):
+    """Get detailed state of a specific robot."""
+    if not world:
+        raise HTTPException(status_code=503, detail="World not initialized")
+
+    robot = next((r for r in world.robots if r.robot_id == robot_id), None)
+    if not robot:
+        raise HTTPException(status_code=404, detail=f"Robot {robot_id} not found")
+
+    return {
+        "robot_id": robot.robot_id,
+        "zone_id": robot.zone_id,
+        "x": round(robot.x, 2),
+        "y": round(robot.y, 2),
+        "velocity": round(robot.velocity, 2),
+        "heading": round(robot.heading, 1),
+        "motion_state": robot.motion_state,
+        "commanded_action": robot.commanded_action,
+    }
