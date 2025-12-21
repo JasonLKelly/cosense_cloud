@@ -129,7 +129,7 @@ The stream-processor computes a **risk score** (0.0-1.0) using weighted factors:
 - `BLE_PROXIMITY_DETECTED`: Strong BLE signal (RSSI > -60 dBm)
 - `SENSOR_DISAGREEMENT`: Ultrasonic and BLE disagree on proximity
 
-**Current Status:** Decisions are computed but only emitted to Kafka (not applied to simulator). To apply decisions, the stream-processor needs to POST to `/decision` on the simulator.
+**Current Status:** Decisions are computed, emitted to Kafka, AND applied to simulator via HTTP POST to `/decision`. Robots now actually SLOW/STOP/REROUTE based on risk scores.
 
 ---
 
@@ -362,13 +362,11 @@ The stream-processor computes a **risk score** (0.0-1.0) using weighted factors:
 | 8. Demo | ⏳ TODO | |
 
 **Remaining Work:**
-1. **Apply decisions to simulator** - Stream processor emits decisions to Kafka but doesn't POST to simulator's `/decision` endpoint
-2. **Backend consumes decisions** - Backend buffers decisions from Kafka but UI currently shows them
-3. **Datadog instrumentation** - Decision quality metrics
-4. **README** - Quickstart and deployment instructions
-5. **Demo video** - 2-3 minute walkthrough
+1. **Datadog instrumentation** - Decision quality metrics
+2. **README** - Quickstart and deployment instructions
+3. **Demo video** - 2-3 minute walkthrough
 
-**Next Priority:** Wire stream-processor decisions to simulator so robots actually STOP/SLOW/REROUTE
+**Next Priority:** Datadog observability or final cleanup/documentation
 
 ---
 

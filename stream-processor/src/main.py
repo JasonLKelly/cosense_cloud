@@ -1,11 +1,13 @@
 """Main stream processor using QuixStreams."""
 
+import atexit
 import json
 import logging
 import math
 import time
 from collections import defaultdict
 
+import httpx
 from quixstreams import Application
 
 from .config import settings
@@ -13,6 +15,53 @@ from .risk import assess_risk, create_decision_event, Action
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# HTTP client for applying decisions to simulator
+http_client: httpx.Client | None = None
+
+
+def cleanup_http_client():
+    """Clean up HTTP client on exit."""
+    global http_client
+    if http_client is not None:
+        http_client.close()
+        http_client = None
+
+
+atexit.register(cleanup_http_client)
+
+
+def get_http_client() -> httpx.Client:
+    """Get or create HTTP client for simulator communication."""
+    global http_client
+    if http_client is None:
+        http_client = httpx.Client(timeout=2.0)
+    return http_client
+
+
+def apply_decision_to_simulator(decision: dict) -> bool:
+    """POST decision to simulator to apply it."""
+    if not settings.apply_decisions:
+        return True
+
+    try:
+        client = get_http_client()
+        response = client.post(
+            f"{settings.simulator_url}/decision",
+            json={
+                "robot_id": decision["robot_id"],
+                "action": decision["action"],
+            },
+        )
+        if response.status_code == 200:
+            logger.debug(f"Applied decision: {decision['robot_id']} -> {decision['action']}")
+            return True
+        else:
+            logger.warning(f"Failed to apply decision: {response.status_code}")
+            return False
+    except httpx.RequestError as e:
+        logger.warning(f"Could not reach simulator: {e}")
+        return False
 
 
 # In-memory state for windowed joins
@@ -97,6 +146,10 @@ def process_robot_telemetry(value: dict) -> dict | None:
     if assessment.action != Action.CONTINUE or state.decision_changed(robot_id, assessment.action):
         decision = create_decision_event(assessment, zone_id)
         state.last_decisions[robot_id] = decision
+
+        # Apply decision to simulator
+        apply_decision_to_simulator(decision)
+
         return decision
 
     return None
@@ -155,6 +208,10 @@ def main():
     """Main entry point."""
     logger.info("Starting CoSense Stream Processor")
     logger.info(f"Kafka brokers: {settings.kafka_brokers}")
+    if settings.apply_decisions:
+        logger.info(f"Decision application enabled -> {settings.simulator_url}")
+    else:
+        logger.info("Decision application disabled (Kafka-only mode)")
 
     # Build QuixStreams Application with optional SASL config
     app_kwargs = {

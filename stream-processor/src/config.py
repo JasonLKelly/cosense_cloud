@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     join_window_ms: int = 500
     state_emit_interval_ms: int = 200
 
+    # Simulator connection (for applying decisions)
+    simulator_url: str = "http://simulator:8000"
+    apply_decisions: bool = True  # Set to False to disable decision application
+
     # Risk thresholds
     proximity_warning_m: float = 3.0
     proximity_critical_m: float = 1.5
