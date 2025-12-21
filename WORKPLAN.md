@@ -166,8 +166,9 @@ Anything beyond this is optional.
 
 ### Tool Definitions (Medium Granularity)
 
-Six Python functions passed directly to Gemini. SDK auto-generates schemas from docstrings + type hints.
+Nine Python functions passed directly to Gemini. SDK auto-generates schemas from docstrings + type hints.
 
+**Query Tools:**
 | Tool | Purpose | Source |
 |------|---------|--------|
 | `get_robot_state(robot_id, window_sec)` | Position, velocity, sensors, trajectory | Kafka |
@@ -176,6 +177,13 @@ Six Python functions passed directly to Gemini. SDK auto-generates schemas from 
 | `get_zone_context(zone_id)` | Visibility, congestion, counts | Kafka/Simulator |
 | `get_scenario_status()` | Simulation state, toggles | Simulator REST |
 | `analyze_patterns(window_sec, group_by)` | Aggregated stats for patterns | Kafka |
+
+**Control Tools:**
+| Tool | Purpose | Source |
+|------|---------|--------|
+| `start_simulation()` | Start the robot simulation | Simulator REST |
+| `stop_simulation()` | Stop/pause the simulation | Simulator REST |
+| `reset_simulation()` | Reset to initial state | Simulator REST |
 
 ### SDK Migration
 
@@ -192,7 +200,7 @@ Six Python functions passed directly to Gemini. SDK auto-generates schemas from 
 - [x] Rename `control-center/` → `control-center-webapp/`
 - [x] Migrate to `google-genai` SDK
 - [ ] Implement KafkaHistoryReader for tool queries (using in-memory buffer for now)
-- [x] Implement 6 tool functions
+- [x] Implement 9 tool functions (6 query + 3 control)
 - [x] Update `/ask` endpoint to use automatic function calling
 - [ ] Add Q&A panel to webapp (text input, answer display)
 - [ ] Add verbose mode toggle (show tool calls)

@@ -234,9 +234,63 @@ def get_scenario_status() -> dict:
         Whether simulation is running, entity counts, scenario toggles
     """
     try:
-        # Query simulator synchronously (we're in a sync tool function)
         with httpx.Client(timeout=2.0) as client:
             response = client.get(f"{_ctx.simulator_url}/scenario/status")
+            if response.status_code == 200:
+                return response.json()
+            return {"error": f"Simulator returned {response.status_code}"}
+    except Exception as e:
+        return {"error": f"Could not reach simulator: {str(e)}"}
+
+
+def start_simulation() -> dict:
+    """Start the robot simulation.
+
+    Call this when the operator asks to start, run, or begin the simulation.
+
+    Returns:
+        Confirmation that simulation started, or error message
+    """
+    try:
+        with httpx.Client(timeout=2.0) as client:
+            response = client.post(f"{_ctx.simulator_url}/scenario/start")
+            if response.status_code == 200:
+                return response.json()
+            return {"error": f"Simulator returned {response.status_code}"}
+    except Exception as e:
+        return {"error": f"Could not reach simulator: {str(e)}"}
+
+
+def stop_simulation() -> dict:
+    """Stop the robot simulation.
+
+    Call this when the operator asks to stop, pause, or halt the simulation.
+
+    Returns:
+        Confirmation that simulation stopped, or error message
+    """
+    try:
+        with httpx.Client(timeout=2.0) as client:
+            response = client.post(f"{_ctx.simulator_url}/scenario/stop")
+            if response.status_code == 200:
+                return response.json()
+            return {"error": f"Simulator returned {response.status_code}"}
+    except Exception as e:
+        return {"error": f"Could not reach simulator: {str(e)}"}
+
+
+def reset_simulation() -> dict:
+    """Reset the robot simulation to initial state.
+
+    Call this when the operator asks to reset, restart, or reinitialize.
+    This stops the simulation and clears all state.
+
+    Returns:
+        Confirmation that simulation was reset, or error message
+    """
+    try:
+        with httpx.Client(timeout=2.0) as client:
+            response = client.post(f"{_ctx.simulator_url}/scenario/reset")
             if response.status_code == 200:
                 return response.json()
             return {"error": f"Simulator returned {response.status_code}"}
@@ -289,12 +343,17 @@ def analyze_patterns(window_sec: int = 300, group_by: str = "action") -> dict:
 
 # All available tools
 TOOLS = [
+    # Query tools
     get_robot_state,
     get_nearby_entities,
     get_decisions,
     get_zone_context,
     get_scenario_status,
     analyze_patterns,
+    # Control tools
+    start_simulation,
+    stop_simulation,
+    reset_simulation,
 ]
 
 
@@ -304,24 +363,30 @@ TOOLS = [
 
 SYSTEM_PROMPT = """You are an operator copilot for CoSense, a warehouse robot coordination system.
 
-Your job is to help operators understand what's happening with robots, humans, and zones.
+Your job is to help operators understand and control what's happening with robots, humans, and zones.
 
-You have access to these tools:
+QUERY TOOLS:
 - get_robot_state: Get a robot's position, velocity, sensors, and trajectory
 - get_nearby_entities: Find humans and robots near a specific robot
 - get_decisions: Get recent coordination decisions (STOP, SLOW, REROUTE, CONTINUE)
 - get_zone_context: Get zone conditions (visibility, congestion, connectivity)
-- get_scenario_status: Get simulation status
+- get_scenario_status: Get simulation status (running, entity counts, toggles)
 - analyze_patterns: Analyze decision patterns and trends
 
-RULES:
-1. Use the tools to gather data before answering
-2. ONLY state facts that come from tool results - never invent data
-3. Cite specific values (distances, speeds, scores) as evidence
-4. If data is insufficient, say so clearly
-5. Be concise but complete
+CONTROL TOOLS:
+- start_simulation: Start the robot simulation
+- stop_simulation: Stop/pause the simulation
+- reset_simulation: Reset simulation to initial state
 
-When answering:
+RULES:
+1. Use query tools to gather data before answering questions
+2. Use control tools when the operator asks to start, stop, or reset
+3. ONLY state facts that come from tool results - never invent data
+4. Cite specific values (distances, speeds, scores) as evidence
+5. If data is insufficient, say so clearly
+6. Be concise but complete
+
+When answering questions:
 - Explain WHY things happened by citing reason_codes and sensor data
 - For patterns, use analyze_patterns and look at distributions
 - Always ground your answer in the data you retrieved"""
