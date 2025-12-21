@@ -10,6 +10,7 @@ export interface Robot {
   motion_state: 'moving' | 'stopped' | 'slowing'
   commanded_action: 'CONTINUE' | 'SLOW' | 'STOP' | 'REROUTE'
   destination?: string
+  manual_override?: boolean
 }
 
 export interface Human {

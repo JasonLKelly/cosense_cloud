@@ -40,7 +40,10 @@ export function EntityDrawer({ robot, onClose, onStop, onStart }: EntityDrawerPr
             </div>
             <div className="entity-info-row">
               <span className="entity-info-label">Command</span>
-              <span className="entity-info-value">{robot.commanded_action}</span>
+              <span className="entity-info-value">
+                {robot.commanded_action}
+                {robot.manual_override && ' (Manual)'}
+              </span>
             </div>
             <div className="entity-info-row">
               <span className="entity-info-label">Destination</span>
@@ -49,7 +52,14 @@ export function EntityDrawer({ robot, onClose, onStop, onStart }: EntityDrawerPr
           </div>
 
           <div className="entity-actions">
-            {robot.motion_state !== 'stopped' ? (
+            {robot.manual_override ? (
+              <button
+                className="btn btn-primary"
+                onClick={() => onStart(robot.robot_id)}
+              >
+                Release Manual Stop
+              </button>
+            ) : robot.motion_state !== 'stopped' ? (
               <button
                 className="btn btn-danger"
                 onClick={() => onStop(robot.robot_id)}

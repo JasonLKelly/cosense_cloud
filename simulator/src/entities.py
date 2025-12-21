@@ -34,6 +34,9 @@ class Robot:
     # Commanded state (from coordination decisions)
     commanded_action: Literal["CONTINUE", "SLOW", "STOP", "REROUTE"] = "CONTINUE"
 
+    # Manual override - when True, stream-processor decisions are ignored
+    manual_override: bool = False
+
     def set_path(self, path: list[tuple[float, float]], destination: str | None = None):
         """Set a new path for the robot to follow."""
         self.path = path

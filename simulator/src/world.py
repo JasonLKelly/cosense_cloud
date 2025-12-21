@@ -407,6 +407,7 @@ class World:
                     "motion_state": r.motion_state,
                     "commanded_action": r.commanded_action,
                     "destination": r.destination_waypoint,
+                    "manual_override": r.manual_override,
                 }
                 for r in self.robots
             ],

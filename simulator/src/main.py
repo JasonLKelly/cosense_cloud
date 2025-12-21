@@ -168,6 +168,11 @@ async def apply_decision(cmd: DecisionCommand):
     if not world:
         raise HTTPException(status_code=503, detail="World not initialized")
 
+    # Check if robot has manual override (user manually stopped it)
+    robot = next((r for r in world.robots if r.robot_id == cmd.robot_id), None)
+    if robot and robot.manual_override:
+        return {"status": "skipped", "robot_id": cmd.robot_id, "reason": "manual_override"}
+
     world.apply_decision(cmd.robot_id, cmd.action)
     return {"status": "applied", "robot_id": cmd.robot_id, "action": cmd.action}
 
@@ -211,7 +216,7 @@ async def reset_scenario(params: ResetRequest | None = None):
 # Individual robot control
 @app.post("/robots/{robot_id}/stop")
 async def stop_robot(robot_id: str):
-    """Stop a specific robot."""
+    """Stop a specific robot (manual override - ignores stream-processor decisions)."""
     if not world:
         raise HTTPException(status_code=503, detail="World not initialized")
 
@@ -220,16 +225,18 @@ async def stop_robot(robot_id: str):
         raise HTTPException(status_code=404, detail=f"Robot {robot_id} not found")
 
     robot.commanded_action = "STOP"
+    robot.manual_override = True  # Prevent stream-processor from overriding
     return {
         "status": "stopped",
         "robot_id": robot_id,
         "commanded_action": robot.commanded_action,
+        "manual_override": robot.manual_override,
     }
 
 
 @app.post("/robots/{robot_id}/start")
 async def start_robot(robot_id: str):
-    """Resume a specific robot (set to CONTINUE)."""
+    """Resume a specific robot (clears manual override, allows stream-processor control)."""
     if not world:
         raise HTTPException(status_code=503, detail="World not initialized")
 
@@ -238,10 +245,12 @@ async def start_robot(robot_id: str):
         raise HTTPException(status_code=404, detail=f"Robot {robot_id} not found")
 
     robot.commanded_action = "CONTINUE"
+    robot.manual_override = False  # Allow stream-processor to control again
     return {
         "status": "started",
         "robot_id": robot_id,
         "commanded_action": robot.commanded_action,
+        "manual_override": robot.manual_override,
     }
 
 
