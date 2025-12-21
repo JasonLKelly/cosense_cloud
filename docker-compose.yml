@@ -68,6 +68,8 @@ services:
       KAFKA_BROKERS: broker:29092
     ports:
       - "8000:8000"
+    volumes:
+      - ./maps:/app/maps:ro
     depends_on:
       broker:
         condition: service_healthy
@@ -95,6 +97,8 @@ services:
       SIMULATOR_URL: http://simulator:8000
     ports:
       - "8080:8080"
+    volumes:
+      - ./maps:/app/maps:ro
     depends_on:
       broker:
         condition: service_healthy

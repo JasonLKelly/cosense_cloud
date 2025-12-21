@@ -29,8 +29,8 @@ class Settings(BaseSettings):
     world_height: float = 30.0
 
     # Initial entities
-    robot_count: int = 2
-    human_count: int = 2
+    robot_count: int = 20
+    human_count: int = 10
 
     # Random seed (0 = random)
     seed: int = 0

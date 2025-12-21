@@ -294,12 +294,23 @@ async def scale_scenario(scale: ScaleRequest):
             raise HTTPException(status_code=503, detail=f"Simulator unavailable: {e}")
 
 
+class ResetRequest(BaseModel):
+    """Parameters for resetting the simulation."""
+    robots: int | None = None
+    humans: int | None = None
+    visibility: str | None = None
+    connectivity: str | None = None
+
+
 @app.post("/scenario/reset")
-async def reset_scenario():
+async def reset_scenario(params: ResetRequest | None = None):
     """Reset the simulation (proxied to simulator)."""
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.post(f"{settings.simulator_url}/scenario/reset")
+            response = await client.post(
+                f"{settings.simulator_url}/scenario/reset",
+                json=params.model_dump(exclude_none=True) if params else None,
+            )
             return response.json()
         except httpx.RequestError as e:
             raise HTTPException(status_code=503, detail=f"Simulator unavailable: {e}")
@@ -315,3 +326,61 @@ async def get_simulator_state():
             return response.json()
         except httpx.RequestError as e:
             raise HTTPException(status_code=503, detail=f"Simulator unavailable: {e}")
+
+
+# Robot control endpoints (proxied to simulator)
+@app.post("/robots/{robot_id}/stop")
+async def stop_robot(robot_id: str):
+    """Stop a specific robot."""
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(f"{settings.simulator_url}/robots/{robot_id}/stop")
+            return response.json()
+        except httpx.RequestError as e:
+            raise HTTPException(status_code=503, detail=f"Simulator unavailable: {e}")
+
+
+@app.post("/robots/{robot_id}/start")
+async def start_robot(robot_id: str):
+    """Start a specific robot."""
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(f"{settings.simulator_url}/robots/{robot_id}/start")
+            return response.json()
+        except httpx.RequestError as e:
+            raise HTTPException(status_code=503, detail=f"Simulator unavailable: {e}")
+
+
+# Map endpoint
+@app.get("/map/{map_id}")
+async def get_map(map_id: str):
+    """Get warehouse map definition.
+
+    The map is loaded from the maps/ directory and includes:
+    - Zone definitions
+    - Obstacles (racks, conveyors, workstations)
+    - Named waypoints for navigation
+    """
+    from pathlib import Path
+
+    # Look for map file - try multiple locations
+    possible_paths = [
+        Path("/app/maps") / f"{map_id}.json",  # Docker mount
+        Path(__file__).parent.parent.parent.parent / "maps" / f"{map_id}.json",  # Local dev
+        Path(__file__).parent.parent / "maps" / f"{map_id}.json",  # Alternative
+    ]
+
+    map_file = None
+    for path in possible_paths:
+        if path.exists():
+            map_file = path
+            break
+
+    if not map_file:
+        raise HTTPException(status_code=404, detail=f"Map '{map_id}' not found")
+
+    try:
+        with open(map_file) as f:
+            return json.load(f)
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=500, detail=f"Invalid map file: {e}")

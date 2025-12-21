@@ -102,36 +102,67 @@ Anything beyond this is optional.
 - [x] `stream-processor/` - QuixStreams + Dockerfile
 - [x] Risk scoring logic in `src/risk.py`
 
+### Decision Logic Detail
+
+The stream-processor computes a **risk score** (0.0-1.0) using weighted factors:
+
+| Factor | Weight | Source |
+|--------|--------|--------|
+| Proximity to nearest human | 0.35 | Position calculation |
+| Relative velocity (closing speed) | 0.25 | Velocity vectors |
+| Visibility conditions | 0.15 | Zone context |
+| BLE proximity signal | 0.10 | Robot sensors |
+| Congestion level | 0.10 | Zone context |
+| Sensor disagreement | 0.05 | Ultrasonic vs BLE |
+
+**Action Thresholds:**
+- `STOP`: risk_score >= 0.8
+- `SLOW`: risk_score >= 0.5
+- `REROUTE`: risk_score >= 0.3 AND HIGH_CONGESTION present
+- `CONTINUE`: otherwise
+
+**Reason Codes:** Each factor can trigger a reason code:
+- `CLOSE_PROXIMITY`: Human within 2m (critical) or 5m (warning)
+- `HIGH_RELATIVE_SPEED`: Closing speed > 1 m/s
+- `LOW_VISIBILITY`: Zone visibility degraded or poor
+- `HIGH_CONGESTION`: Congestion level > 0.6
+- `BLE_PROXIMITY_DETECTED`: Strong BLE signal (RSSI > -60 dBm)
+- `SENSOR_DISAGREEMENT`: Ultrasonic and BLE disagree on proximity
+
+**Current Status:** Decisions are computed but only emitted to Kafka (not applied to simulator). To apply decisions, the stream-processor needs to POST to `/decision` on the simulator.
+
 ---
 
-## Phase 3 — Control Center UI 🔄 IN PROGRESS
+## Phase 3 — Control Center UI ✅ DONE
 
 **Goal:** operator-grade situational awareness + Gemini copilot integration.
 
-**UI Spec:** See `control-center-webapp/UI_SPEC.md`
-
 ### V1 Build Priority
 
-1. **Map with live entities** ✅ (basic version done)
-2. **Entity drawer on robot click** (stop/start buttons)
-3. **Bottom drawer: Ask Gemini** (free-form input + response)
-4. **Right drawer: Metrics panel** (zone stats + scenario toggles)
-5. **Verbose mode toggle** (show tool calls)
+1. **Map with live entities** ✅
+2. **Entity drawer on robot click** ✅
+3. **Bottom drawer: Ask Gemini** ✅
+4. **Right drawer: Metrics panel** ✅
+5. **Verbose mode toggle** ✅
 
-### Tasks
-- [x] Basic map with robots/humans
-- [x] Real-time position updates (polling)
-- [x] Start/Stop/Reset buttons
-- [ ] Click robot → Entity Drawer with details + stop/start
-- [ ] Bottom drawer: Ask Gemini panel
-- [ ] Right drawer: Metrics + scenario toggles
-- [ ] Verbose mode for tool calls
-- [ ] Tailwind CSS styling
+### Completed Tasks
+- [x] Warehouse map with zones, racks, conveyors, workstations (from JSON)
+- [x] A* pathfinding for robot navigation
+- [x] Real-time position updates (4Hz polling)
+- [x] Start/Stop/Reset buttons with parameter dialog
+- [x] Click robot → Entity Drawer with details + stop/start
+- [x] Destination display in robot info and target marker on map
+- [x] Bottom drawer: Ask Gemini panel with response display
+- [x] Right drawer: Zone stats, scenario toggles, collapsible decisions, robot grid
+- [x] Verbose mode for tool calls
+- [x] Robot grid with color-coded state (green/yellow/red/purple)
+- [x] Collapsible sections (stops polling when collapsed)
+- [x] Dark theme CSS styling
 
 ### Deliverables
 - [x] `control-center-webapp/` - React + TypeScript + Vite + Dockerfile
 - [x] Running on `localhost:3000`
-- [ ] `UI_SPEC.md` - design spec
+- [x] `maps/zone-c.json` - Shared warehouse map definition
 
 ---
 
@@ -323,14 +354,21 @@ Anything beyond this is optional.
 | 0. Lock Contract | ✅ Done | Schemas defined in `schemas/` |
 | 1. Simulator | ✅ Done | Working, scalable, individual robot control |
 | 2. Stream Processor | ✅ Done | QuixStreams, risk scoring |
-| 3. Control Center UI | 🔄 In Progress | Basic map done, need drawers + Gemini |
+| 3. Control Center UI | ✅ Done | Full UI with map, drawers, Gemini panel |
 | 4. Gemini Copilot | ✅ Done | 11 tools, auto function calling |
 | 5. Datadog | ⏳ TODO | |
 | 6. ElevenLabs | ⏳ TODO | Cut if behind |
 | 7. Cleanup | 🔄 Partial | Docker works, needs README |
 | 8. Demo | ⏳ TODO | |
 
-**Next Priority:** Phase 3 - Complete control center UI with Gemini integration
+**Remaining Work:**
+1. **Apply decisions to simulator** - Stream processor emits decisions to Kafka but doesn't POST to simulator's `/decision` endpoint
+2. **Backend consumes decisions** - Backend buffers decisions from Kafka but UI currently shows them
+3. **Datadog instrumentation** - Decision quality metrics
+4. **README** - Quickstart and deployment instructions
+5. **Demo video** - 2-3 minute walkthrough
+
+**Next Priority:** Wire stream-processor decisions to simulator so robots actually STOP/SLOW/REROUTE
 
 ---
 

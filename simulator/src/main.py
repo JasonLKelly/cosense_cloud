@@ -172,9 +172,17 @@ async def apply_decision(cmd: DecisionCommand):
     return {"status": "applied", "robot_id": cmd.robot_id, "action": cmd.action}
 
 
+class ResetRequest(BaseModel):
+    """Parameters for resetting the simulation."""
+    robots: int | None = None
+    humans: int | None = None
+    visibility: str | None = None
+    connectivity: str | None = None
+
+
 @app.post("/scenario/reset")
-async def reset_scenario():
-    """Reset the simulation to initial state."""
+async def reset_scenario(params: ResetRequest | None = None):
+    """Reset the simulation to initial state with optional parameters."""
     global world, simulation_task
 
     # Stop if running
@@ -184,9 +192,18 @@ async def reset_scenario():
             await simulation_task
             simulation_task = None
 
-    # Recreate world
+    # Recreate world with parameters
     producer = world.producer if world else None
-    world = World.create(producer=producer)
+    robot_count = params.robots if params and params.robots else None
+    human_count = params.humans if params and params.humans else None
+    world = World.create(producer=producer, robot_count=robot_count, human_count=human_count)
+
+    # Apply visibility/connectivity if specified
+    if params:
+        if params.visibility:
+            world.zone.visibility = params.visibility
+        if params.connectivity:
+            world.zone.connectivity = params.connectivity
 
     return {"status": "reset", "robot_count": len(world.robots), "human_count": len(world.humans)}
 

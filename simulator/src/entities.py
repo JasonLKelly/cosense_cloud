@@ -18,7 +18,12 @@ class Robot:
     heading: float = 0.0  # degrees
     motion_state: Literal["moving", "stopped", "slowing"] = "stopped"
 
-    # Target for movement
+    # Path following
+    path: list[tuple[float, float]] = field(default_factory=list)
+    path_index: int = 0
+    destination_waypoint: str | None = None
+
+    # Legacy target support (for backward compatibility)
     target_x: float | None = None
     target_y: float | None = None
 
@@ -29,14 +34,24 @@ class Robot:
     # Commanded state (from coordination decisions)
     commanded_action: Literal["CONTINUE", "SLOW", "STOP", "REROUTE"] = "CONTINUE"
 
+    def set_path(self, path: list[tuple[float, float]], destination: str | None = None):
+        """Set a new path for the robot to follow."""
+        self.path = path
+        self.path_index = 0
+        self.destination_waypoint = destination
+        if path:
+            self.target_x, self.target_y = path[0]
+
     def pick_new_target(self, world_width: float, world_height: float, rng: random.Random):
-        """Pick a new random target location."""
+        """Pick a new random target location (legacy method)."""
         margin = 2.0
         self.target_x = rng.uniform(margin, world_width - margin)
         self.target_y = rng.uniform(margin, world_height - margin)
+        self.path = []
+        self.path_index = 0
 
     def update(self, dt: float, world_width: float, world_height: float, rng: random.Random):
-        """Update position based on current state and target."""
+        """Update position based on current state and target/path."""
         max_speed = 2.0  # m/s
         acceleration = 1.0  # m/s^2
 
@@ -48,18 +63,33 @@ class Robot:
         elif self.commanded_action == "SLOW":
             max_speed = 0.5
 
-        # Pick new target if needed
-        if self.target_x is None or self.target_y is None:
-            self.pick_new_target(world_width, world_height, rng)
+        # Get current target
+        target_x = self.target_x
+        target_y = self.target_y
+
+        if target_x is None or target_y is None:
+            self.velocity = 0.0
+            self.motion_state = "stopped"
+            return
 
         # Calculate direction to target
-        dx = self.target_x - self.x
-        dy = self.target_y - self.y
+        dx = target_x - self.x
+        dy = target_y - self.y
         distance_to_target = math.sqrt(dx * dx + dy * dy)
 
-        # Reached target?
+        # Reached current waypoint?
         if distance_to_target < 0.5:
-            self.pick_new_target(world_width, world_height, rng)
+            if self.path and self.path_index < len(self.path) - 1:
+                # Move to next waypoint in path
+                self.path_index += 1
+                self.target_x, self.target_y = self.path[self.path_index]
+            else:
+                # Reached end of path - signal that we need a new destination
+                self.path = []
+                self.path_index = 0
+                self.target_x = None
+                self.target_y = None
+                self.destination_waypoint = None
             return
 
         # Update heading
@@ -97,9 +127,32 @@ class Human:
     target_y: float | None = None
     idle_until: float = 0.0  # timestamp when idle period ends
 
+    # Workstation assignment (for realistic movement)
+    assigned_zone: str | None = None
+    home_x: float | None = None
+    home_y: float | None = None
+
+    def set_home(self, x: float, y: float, zone: str | None = None):
+        """Set the human's home position (workstation)."""
+        self.home_x = x
+        self.home_y = y
+        self.assigned_zone = zone
+
     def pick_new_target(self, world_width: float, world_height: float, rng: random.Random):
-        """Pick a new random target location."""
+        """Pick a new target location."""
         margin = 2.0
+
+        # If has a home position, usually stay near it
+        if self.home_x is not None and self.home_y is not None:
+            if rng.random() < 0.7:  # 70% chance to stay near home
+                self.target_x = self.home_x + rng.gauss(0, 3)
+                self.target_y = self.home_y + rng.gauss(0, 3)
+                # Clamp
+                self.target_x = max(margin, min(world_width - margin, self.target_x))
+                self.target_y = max(margin, min(world_height - margin, self.target_y))
+                return
+
+        # Otherwise random location
         self.target_x = rng.uniform(margin, world_width - margin)
         self.target_y = rng.uniform(margin, world_height - margin)
 

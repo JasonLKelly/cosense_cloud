@@ -1,208 +1,159 @@
-import { useState, useEffect } from 'react'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
-
-interface Robot {
-  robot_id: string
-  x: number
-  y: number
-  velocity: number
-  heading: number
-  motion_state: string
-  commanded_action?: string
-}
-
-interface Human {
-  human_id: string
-  x: number
-  y: number
-  velocity: number
-}
-
-interface SimState {
-  sim_time: number
-  running: boolean
-  zone: {
-    zone_id: string
-    width: number
-    height: number
-    visibility: string
-    connectivity: string
-    congestion_level: number
-  }
-  robots: Robot[]
-  humans: Human[]
-}
-
-interface Decision {
-  decision_id: string
-  robot_id: string
-  action: string
-  reason_codes: string[]
-  summary: string
-  timestamp: number
-}
+import { useState } from 'react'
+import { Robot, API_URL } from './types'
+import { useSimState } from './hooks/useSimState'
+import { useGemini } from './hooks/useGemini'
+import { useMap } from './hooks/useMap'
+import { EntityDrawer } from './components/EntityDrawer'
+import { AskGemini } from './components/AskGemini'
+import { MetricsPanel } from './components/MetricsPanel'
+import { WarehouseMapView } from './components/WarehouseMap'
+import { ResetDialog } from './components/ResetDialog'
+import './styles.css'
 
 export default function App() {
-  const [state, setState] = useState<SimState | null>(null)
-  const [decisions, setDecisions] = useState<Decision[]>([])
-  const [error, setError] = useState<string | null>(null)
+  const [pollDecisions, setPollDecisions] = useState(true)
 
-  const fetchState = async () => {
-    try {
-      const res = await fetch(`${API_URL}/simulator/state`)
-      if (res.ok) {
-        setState(await res.json())
-        setError(null)
-      }
-    } catch (e) {
-      setError('Cannot connect to API')
-    }
+  const {
+    state,
+    decisions,
+    error: simError,
+    startSim,
+    stopSim,
+    toggleVisibility,
+    toggleConnectivity,
+    stopRobot,
+    startRobot,
+  } = useSimState({ pollDecisions })
+
+  const {
+    ask,
+    clear,
+    loading: geminiLoading,
+    response: geminiResponse,
+    error: geminiError,
+  } = useGemini()
+
+  const { map, error: mapError } = useMap('zone-c')
+
+  const [selectedRobotId, setSelectedRobotId] = useState<string | null>(null)
+  const [verboseMode, setVerboseMode] = useState(false)
+  const [showResetDialog, setShowResetDialog] = useState(false)
+
+  // Get live robot data for selected robot
+  const selectedRobot = state?.robots.find(r => r.robot_id === selectedRobotId) || null
+
+  const handleRobotClick = (robot: Robot) => {
+    setSelectedRobotId(robot.robot_id)
   }
 
-  const fetchDecisions = async () => {
-    try {
-      const res = await fetch(`${API_URL}/decisions?limit=10`)
-      if (res.ok) {
-        setDecisions(await res.json())
-      }
-    } catch {
-      // ignore
-    }
+  const handleCloseDrawer = () => {
+    setSelectedRobotId(null)
   }
 
-  useEffect(() => {
-    fetchState()
-    fetchDecisions()
-    const interval = setInterval(() => {
-      fetchState()
-      fetchDecisions()
-    }, 500)
-    return () => clearInterval(interval)
-  }, [])
+  const handleStopRobot = async (robotId: string) => {
+    await stopRobot(robotId)
+  }
 
-  const startSim = () => fetch(`${API_URL}/scenario/start`, { method: 'POST' })
-  const stopSim = () => fetch(`${API_URL}/scenario/stop`, { method: 'POST' })
-  const resetSim = () => fetch(`${API_URL}/scenario/reset`, { method: 'POST' })
+  const handleStartRobot = async (robotId: string) => {
+    await startRobot(robotId)
+  }
 
-  const scale = 10 // pixels per meter
+  const handleResetClick = () => {
+    setShowResetDialog(true)
+  }
+
+  const handleResetConfirm = async (params: {
+    robots: number
+    humans: number
+    visibility: string
+    connectivity: string
+  }) => {
+    setShowResetDialog(false)
+
+    // Reset with all parameters
+    await fetch(`${API_URL}/scenario/reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params),
+    })
+  }
 
   return (
-    <div style={{ padding: 20 }}>
-      <h1 style={{ marginBottom: 20 }}>CoSense Control Center</h1>
+    <div className="app">
+      {/* Header */}
+      <header className="header">
+        <h1 className="header-title">CoSense Control Center</h1>
+        <div className="header-controls">
+          <button className="btn btn-primary" onClick={startSim}>Start</button>
+          <button className="btn btn-danger" onClick={stopSim}>Stop</button>
+          <button className="btn btn-secondary" onClick={handleResetClick}>Reset</button>
+        </div>
+        <div className="header-status">
+          {state && (
+            <>
+              <span>{state.running ? 'Running' : 'Stopped'}</span>
+              <span>Time: {state.sim_time.toFixed(1)}s</span>
+            </>
+          )}
+        </div>
+      </header>
 
-      {error && <div style={{ color: '#f66', marginBottom: 10 }}>{error}</div>}
+      {/* Main Content */}
+      <div className="main-content">
+        {/* Map Container */}
+        <div className="map-container">
+          {(simError || mapError) && (
+            <div className="error">{simError || mapError}</div>
+          )}
 
-      <div style={{ marginBottom: 20 }}>
-        <button onClick={startSim} style={btnStyle}>Start</button>
-        <button onClick={stopSim} style={btnStyle}>Stop</button>
-        <button onClick={resetSim} style={btnStyle}>Reset</button>
-        {state && (
-          <span style={{ marginLeft: 20 }}>
-            {state.running ? '🟢 Running' : '⚪ Stopped'} |
-            Time: {state.sim_time.toFixed(1)}s |
-            Robots: {state.robots.length} |
-            Humans: {state.humans.length}
-          </span>
-        )}
+          <WarehouseMapView
+            map={map}
+            robots={state?.robots || []}
+            humans={state?.humans || []}
+            selectedRobotId={selectedRobotId}
+            onRobotClick={handleRobotClick}
+          />
+        </div>
+
+        {/* Right Drawer - Metrics Panel */}
+        <MetricsPanel
+          zone={state?.zone || null}
+          robots={state?.robots || []}
+          decisions={decisions}
+          onToggleVisibility={toggleVisibility}
+          onToggleConnectivity={toggleConnectivity}
+          onDecisionsExpandedChange={setPollDecisions}
+          onRobotClick={handleRobotClick}
+        />
       </div>
 
-      <div style={{ display: 'flex', gap: 20 }}>
-        {/* Map */}
-        <div style={{
-          position: 'relative',
-          width: (state?.zone.width || 50) * scale,
-          height: (state?.zone.height || 30) * scale,
-          background: '#2a2a4a',
-          border: '2px solid #444',
-          borderRadius: 8,
-        }}>
-          {state?.robots.map(robot => (
-            <div
-              key={robot.robot_id}
-              style={{
-                position: 'absolute',
-                left: robot.x * scale - 8,
-                top: robot.y * scale - 8,
-                width: 16,
-                height: 16,
-                background: robot.commanded_action === 'STOP' ? '#f44' :
-                           robot.commanded_action === 'SLOW' ? '#fa0' : '#4f4',
-                borderRadius: '50%',
-                border: '2px solid #fff',
-                transform: `rotate(${robot.heading}deg)`,
-              }}
-              title={`${robot.robot_id}: ${robot.motion_state} (${robot.commanded_action || 'CONTINUE'})`}
-            >
-              <div style={{
-                position: 'absolute',
-                top: -20,
-                left: -10,
-                fontSize: 10,
-                whiteSpace: 'nowrap',
-                color: '#aaa',
-              }}>
-                {robot.robot_id}
-              </div>
-            </div>
-          ))}
-          {state?.humans.map(human => (
-            <div
-              key={human.human_id}
-              style={{
-                position: 'absolute',
-                left: human.x * scale - 6,
-                top: human.y * scale - 6,
-                width: 12,
-                height: 12,
-                background: '#66f',
-                borderRadius: '50%',
-              }}
-              title={human.human_id}
-            />
-          ))}
-        </div>
+      {/* Bottom Drawer - Ask Gemini */}
+      <AskGemini
+        loading={geminiLoading}
+        response={geminiResponse}
+        error={geminiError}
+        onAsk={ask}
+        onClear={clear}
+        verboseMode={verboseMode}
+        onToggleVerbose={() => setVerboseMode(!verboseMode)}
+      />
 
-        {/* Decisions */}
-        <div style={{ flex: 1, maxWidth: 400 }}>
-          <h3>Recent Decisions</h3>
-          <div style={{ fontSize: 12, maxHeight: 300, overflow: 'auto' }}>
-            {decisions.length === 0 && <div style={{ color: '#666' }}>No decisions yet</div>}
-            {decisions.slice().reverse().map(d => (
-              <div key={d.decision_id} style={{
-                padding: 8,
-                marginBottom: 4,
-                background: '#2a2a4a',
-                borderRadius: 4,
-                borderLeft: `3px solid ${d.action === 'STOP' ? '#f44' : d.action === 'SLOW' ? '#fa0' : '#4f4'}`,
-              }}>
-                <div><strong>{d.robot_id}</strong>: {d.action}</div>
-                <div style={{ color: '#888' }}>{d.summary}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* Entity Drawer (slides in from right) */}
+      <EntityDrawer
+        robot={selectedRobot}
+        onClose={handleCloseDrawer}
+        onStop={handleStopRobot}
+        onStart={handleStartRobot}
+      />
 
-      {/* Zone Info */}
-      {state && (
-        <div style={{ marginTop: 20, fontSize: 12, color: '#888' }}>
-          Zone: {state.zone.zone_id} |
-          Visibility: {state.zone.visibility} |
-          Connectivity: {state.zone.connectivity} |
-          Congestion: {(state.zone.congestion_level * 100).toFixed(0)}%
-        </div>
-      )}
+      {/* Reset Dialog */}
+      <ResetDialog
+        isOpen={showResetDialog}
+        currentRobots={state?.robots.length || 20}
+        currentHumans={state?.humans.length || 10}
+        onCancel={() => setShowResetDialog(false)}
+        onReset={handleResetConfirm}
+      />
     </div>
   )
-}
-
-const btnStyle: React.CSSProperties = {
-  padding: '8px 16px',
-  marginRight: 8,
-  background: '#4a4a6a',
-  border: 'none',
-  borderRadius: 4,
-  color: '#fff',
-  cursor: 'pointer',
 }
