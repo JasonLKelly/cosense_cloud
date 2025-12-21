@@ -420,7 +420,6 @@ Stream decisions to BigQuery for real-time analytics.
 |------|--------|
 | ~~Datadog~~ | Wrong challenge (Confluent selected) |
 | ~~ElevenLabs~~ | Wrong challenge (Confluent selected) |
-| ~~Flink ML~~ | Requires early access, not essential |
 
 ---
 
