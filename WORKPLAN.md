@@ -380,6 +380,11 @@ Stream decisions to BigQuery for real-time analytics.
 | `backend/` | HTTP API, Gemini copilot, tool execution |
 | `control-center-webapp/` | React operator UI |
 | `schemas/` | Shared Pydantic models |
+| `docs/` | Documentation |
+
+## Documentation
+
+- **[docs/kafka-topics.md](docs/kafka-topics.md)** — Kafka topics, message schemas, data flow diagram
 
 ---
 
