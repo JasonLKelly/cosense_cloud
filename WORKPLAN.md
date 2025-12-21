@@ -144,11 +144,13 @@ Anything beyond this is optional.
 
 **Goal:** demonstrate real Confluent integration (not just local Docker).
 
+**Key Benefit:** Confluent Cloud has built-in metrics UI showing topic throughput, consumer lag, and partition health — no need to build a custom metrics dashboard. Just screenshot the Console for the demo.
+
 ### Tasks
 - [ ] Create Confluent Cloud cluster (free trial)
 - [ ] Configure topics: `robot.telemetry`, `human.telemetry`, `zone.context`, `coordination.decisions`
 - [ ] Test full pipeline on Confluent Cloud
-- [ ] Capture Confluent Console screenshots for submission
+- [ ] Capture Confluent Console screenshots (topics, throughput, metrics)
 - [ ] Document Confluent Cloud setup in README
 
 ### Environment Variables
@@ -242,19 +244,20 @@ Make streaming **feel** real-time in the UI.
 
 Real-time health panel showing Confluent pipeline performance.
 
+**Note:** Confluent Cloud Console already shows topic throughput, consumer lag, and partition metrics. May be sufficient for demo — custom dashboard is optional.
+
 | Metric | Source | Display |
 |--------|--------|---------|
 | Decisions/second | Backend buffer | Live counter |
 | Avg decision latency | timestamp diff | Gauge (ms) |
-| Kafka consumer lag | Confluent metrics API | Lag indicator |
-| Topic throughput | Confluent metrics API | msgs/sec |
+| Kafka consumer lag | Confluent Cloud Console | Screenshot |
+| Topic throughput | Confluent Cloud Console | Screenshot |
 | Active robots | Simulator state | Count |
 
 ### Tasks
-- [ ] Add `/metrics` endpoint to backend
-- [ ] Create collapsible "Stream Health" panel in UI
-- [ ] Pull Confluent Cloud metrics if API available
-- [ ] Show message rates and latency
+- [ ] Add `/metrics` endpoint to backend (optional)
+- [ ] Create collapsible "Stream Health" panel in UI (optional)
+- [x] Use Confluent Cloud Console for throughput/lag metrics
 
 ### 6D. Proactive Gemini Agent (High Impact)
 
