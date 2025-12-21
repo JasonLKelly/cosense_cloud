@@ -55,26 +55,24 @@ Anything beyond this is optional.
 **Goal:** deterministic telemetry source.
 
 ### Scope
-- 1 zone (Zone C) - expandable
-- 2+ robots (scalable via `/scenario/scale`)
-- 2+ humans (scalable via `/scenario/scale`)
-- simple kinematics (x, y, velocity, heading)
+- 1 zone (Zone C) with realistic warehouse layout
+- Scalable robots/humans via `/scenario/reset` with params
+- A* pathfinding between waypoints
 
-### Tasks
-- [x] Simulator service emits:
-  - `robot.telemetry`
-  - `human.telemetry`
-  - `zone.context`
-- [x] Synthetic sensors:
-  - ultrasonic distance
-  - BLE RSSI (distance + noise)
-- [x] Scenario control via REST:
-  - `/scenario/start`, `/scenario/stop`, `/scenario/reset`
-  - `/scenario/toggle` (visibility, connectivity)
-  - `/scenario/scale` (add robots/humans)
+### As-Built Features
+- [x] Warehouse map from JSON (`maps/zone-c.json`)
+- [x] A* pathfinding with obstacle avoidance
+- [x] Robots navigate to waypoints, pause 1-10s at destination
+- [x] Synthetic sensors: ultrasonic distance, BLE RSSI
+- [x] Telemetry: `robot.telemetry`, `human.telemetry`, `zone.context`
+- [x] Scenario control: start/stop/reset/toggle/scale
+- [x] Individual robot control: `/robots/{id}/stop`, `/robots/{id}/start`
+- [x] Manual override: stopped robots stay stopped until released
+- [x] Accepts decisions from stream-processor via `/decision`
 
 ### Deliverables
 - [x] `simulator/` - FastAPI + Dockerfile
+- [x] `maps/zone-c.json` - Warehouse layout with zones, racks, waypoints
 - [x] Supports Confluent Cloud via env vars
 
 ---
@@ -83,22 +81,19 @@ Anything beyond this is optional.
 
 **Goal:** real-time coordination logic.
 
-### Tasks
+### As-Built Features
 - [x] Consume simulator topics via QuixStreams
 - [x] State tracking for robot/human/zone
-- [x] Compute:
-  - risk score (weighted formula)
-  - action mapping (CONTINUE/SLOW/STOP/REROUTE)
-- [x] Emit:
-  - `coordination.decisions` with reason codes
-
-### Implementation
-- QuixStreams for stream processing
-- In-memory state store for windowed joins
-- Risk scoring with 6 weighted factors
+- [x] Risk scoring with 6 weighted factors:
+  - Proximity (0.35), Relative velocity (0.25), Visibility (0.15)
+  - BLE signal (0.10), Congestion (0.10), Sensor disagreement (0.05)
+- [x] Action thresholds: STOP≥0.8, SLOW≥0.5, REROUTE≥0.3+congestion
+- [x] Emit `coordination.decisions` with reason codes
+- [x] **Apply decisions to simulator** via HTTP POST (robots actually stop/slow)
+- [x] Skip robots with manual_override (user-stopped robots stay stopped)
 
 ### Deliverables
-- [x] `stream-processor/` - QuixStreams + Dockerfile
+- [x] `stream-processor/` - QuixStreams + httpx + Dockerfile
 - [x] Risk scoring logic in `src/risk.py`
 
 ---
@@ -107,13 +102,19 @@ Anything beyond this is optional.
 
 **Goal:** operator-grade situational awareness + Gemini copilot integration.
 
-### Completed Tasks
-- [x] Warehouse map with zones, racks, conveyors, workstations
+### As-Built Features
+- [x] Warehouse map rendering (zones, racks, conveyors, workstations, docks)
 - [x] Real-time position updates (4Hz polling)
-- [x] Start/Stop/Reset buttons
-- [x] Click robot → Entity Drawer with details
-- [x] Bottom drawer: Ask Gemini panel
-- [x] Right drawer: Zone stats, scenario toggles, decisions
+- [x] Robots color-coded by action: green=CONTINUE, yellow=SLOW, red=STOP, purple=REROUTE
+- [x] Click robot on map → Entity Drawer with live details
+- [x] Destination marker (pulsing target) for selected robot
+- [x] Manual stop/start with "(Manual)" indicator
+- [x] Reset dialog with parameters (robots, humans, visibility, connectivity)
+- [x] Collapsible ROBOTS grid with color-coded state icons
+- [x] Collapsible Recent Decisions (stops polling when collapsed)
+- [x] Zone stats panel (robot/human count, congestion, visibility, connectivity)
+- [x] Scenario toggles (visibility, connectivity dropdowns)
+- [x] Bottom drawer: Ask Gemini panel with verbose mode
 - [x] Dark theme CSS styling
 
 ### Deliverables
@@ -170,7 +171,92 @@ KAFKA_SASL_MECHANISM=PLAIN
 
 **Goal:** strengthen the "AI on data in motion" story for Confluent challenge.
 
-### 6A. Proactive Gemini Agent (High Impact, Low Effort)
+### 6A. Streaming Topology Visualization
+
+Make the data flow **visible** to judges.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     STREAMING TOPOLOGY                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌──────────────┐                                               │
+│  │  Simulator   │                                               │
+│  └──────┬───────┘                                               │
+│         │                                                       │
+│         ▼                                                       │
+│  ┌──────────────────────────────────────────────────┐          │
+│  │              CONFLUENT CLOUD                      │          │
+│  │  ┌────────────────┐ ┌────────────────┐           │          │
+│  │  │robot.telemetry │ │human.telemetry │           │          │
+│  │  └───────┬────────┘ └───────┬────────┘           │          │
+│  │          │                  │                     │          │
+│  │          └────────┬─────────┘                     │          │
+│  │                   ▼                               │          │
+│  │          ┌────────────────┐  ┌──────────────┐    │          │
+│  │          │ zone.context   │  │coordination. │    │          │
+│  │          └───────┬────────┘  │  decisions   │    │          │
+│  │                  │           └──────┬───────┘    │          │
+│  └──────────────────┼──────────────────┼────────────┘          │
+│                     │                  │                        │
+│                     ▼                  │                        │
+│            ┌────────────────┐          │                        │
+│            │Stream Processor│──────────┘                        │
+│            │ (Risk Scoring) │                                   │
+│            └────────────────┘                                   │
+│                     │                                           │
+│         ┌───────────┼───────────┐                               │
+│         ▼           ▼           ▼                               │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐                        │
+│  │    UI    │ │  Gemini  │ │ BigQuery │                        │
+│  │ (React)  │ │  Tools   │ │  Sink    │                        │
+│  └──────────┘ └──────────┘ └──────────┘                        │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Tasks
+- [ ] Add topology diagram to README
+- [ ] Embed simplified version in Control Center UI header/footer
+- [ ] Capture Confluent Cloud Console topology screenshot
+
+### 6B. UI Data Flow Emphasis
+
+Make streaming **feel** real-time in the UI.
+
+| Enhancement | Implementation | Demo Impact |
+|-------------|----------------|-------------|
+| Decision flash | Animate new decisions (pulse/glow) | "Watch decisions arrive" |
+| Color-coded actions | STOP=red, SLOW=amber, REROUTE=purple, CONTINUE=green | Instant visual parsing |
+| Decision count badge | Live counter incrementing | Shows throughput |
+| Optional: flow lines | Animated lines from robot to decision log | Visual data flow |
+
+### Tasks
+- [ ] Add CSS animation for new decisions (fade-in + pulse)
+- [x] Color-code decision badges by action type ✅ DONE
+- [x] Color-code robot icons in grid ✅ DONE
+- [ ] Add "Decisions/sec" counter in metrics panel
+- [ ] Optional: animated connection lines on map
+
+### 6C. Streaming Metrics Dashboard
+
+Real-time health panel showing Confluent pipeline performance.
+
+| Metric | Source | Display |
+|--------|--------|---------|
+| Decisions/second | Backend buffer | Live counter |
+| Avg decision latency | timestamp diff | Gauge (ms) |
+| Kafka consumer lag | Confluent metrics API | Lag indicator |
+| Topic throughput | Confluent metrics API | msgs/sec |
+| Active robots | Simulator state | Count |
+
+### Tasks
+- [ ] Add `/metrics` endpoint to backend
+- [ ] Create collapsible "Stream Health" panel in UI
+- [ ] Pull Confluent Cloud metrics if API available
+- [ ] Show message rates and latency
+
+### 6D. Proactive Gemini Agent (High Impact)
 
 Transform Gemini from "answers questions" to "monitors stream and alerts proactively."
 
@@ -194,9 +280,21 @@ async def stream_monitor():
 - [ ] Push proactive alerts to UI via SSE
 - [ ] Add "Gemini Alerts" panel to UI
 
-### 6B. BigQuery Sink (Medium Effort, High Demo Value)
+### 6E. Congestion Scenario Demo
 
-Stream decisions to BigQuery for real-time analytics + historical patterns.
+Pre-built "stress test" for demo impact.
+
+**Demo script:**
+> "Watch what happens when I flip this toggle to stress Zone C—decision rate spikes and Gemini responds live."
+
+### Tasks
+- [ ] Add "Stress Test" button (sets visibility=poor, adds 10 humans)
+- [ ] Ensure Gemini proactively alerts on spike
+- [ ] Document in README as demo highlight
+
+### 6F. BigQuery Sink (If Time Permits)
+
+Stream decisions to BigQuery for real-time analytics.
 
 ### Tasks
 - [ ] Set up Confluent BigQuery Sink V2 connector
@@ -204,19 +302,11 @@ Stream decisions to BigQuery for real-time analytics + historical patterns.
 - [ ] Create BigQuery continuous query for pattern detection
 - [ ] Show BigQuery dashboard in demo
 
-### 6C. Optional: Flink AI Functions (Stretch)
-
-If time permits, add Flink anomaly detection:
-```sql
-SELECT robot_id, ANOMALY_DETECT(risk_score) as is_anomaly
-FROM coordination_state;
-```
-
-**Note:** Requires Confluent Cloud early access program.
-
 ### Deliverables
+- [ ] Topology diagram in README and UI
+- [ ] Animated decision visualization
+- [ ] Streaming metrics panel
 - [ ] Proactive Gemini alerts working
-- [ ] BigQuery receiving streaming decisions
 - [ ] Demo shows "AI reacting to data in motion"
 
 ---
@@ -249,11 +339,19 @@ FROM coordination_state;
 | Time | Section | Key Points |
 |------|---------|------------|
 | 0:00-0:25 | Problem | Warehouse safety, operators need understanding not dashboards |
-| 0:25-0:50 | Architecture | Confluent streaming + Gemini AI |
-| 0:50-1:30 | Live Demo | Robots moving, decisions appearing, scenario toggles |
-| 1:30-2:20 | Gemini | Q&A + **proactive alerts** ("I didn't ask, it noticed") |
-| 2:20-2:45 | Tech | Confluent Cloud, BigQuery sink, real-time AI |
-| 2:45-3:00 | Close | "AI on data in motion" |
+| 0:25-0:45 | Architecture | Show topology diagram: Confluent streaming → AI |
+| 0:45-1:15 | Live Demo | Robots moving, **watch decisions flash in**, color-coded |
+| 1:15-1:45 | Stress Test | **"Flip this toggle—watch decision rate spike"** + metrics panel |
+| 1:45-2:20 | Gemini | Proactive alert fires: "I didn't ask, it noticed the spike" |
+| 2:20-2:45 | Tech | Confluent Cloud Console, streaming metrics, real-time AI |
+| 2:45-3:00 | Close | "AI on data in motion—not batch analytics with a streaming wrapper" |
+
+### Key Demo Moments
+
+1. **Decision Flash** — New decisions animate in with color (STOP=red pulse)
+2. **Stress Test** — Toggle visibility=poor, add humans → decision rate visibly spikes
+3. **Proactive Alert** — Gemini notices pattern without being asked
+4. **Metrics Panel** — Show decisions/sec, latency, throughput in real-time
 
 ### Required Screenshots
 - [ ] Control Center UI with robots moving
@@ -287,21 +385,29 @@ FROM coordination_state;
 | Phase | Status | Notes |
 |-------|--------|-------|
 | 0. Lock Contract | ✅ Done | Schemas defined |
-| 1. Simulator | ✅ Done | Working, scalable |
-| 2. Stream Processor | ✅ Done | QuixStreams, risk scoring |
-| 3. Control Center UI | ✅ Done | Full UI with Gemini panel |
+| 1. Simulator | ✅ Done | A* pathfinding, waypoints, destination pause, manual override |
+| 2. Stream Processor | ✅ Done | Risk scoring, decisions applied to simulator |
+| 3. Control Center UI | ✅ Done | Full UI, color-coded robots, collapsible panels |
 | 4. Gemini Copilot | ✅ Done | 11 tools, auto function calling |
 | 5. Confluent Cloud | ⏳ TODO | **PRIORITY** |
-| 6. AI on Streaming | ⏳ TODO | Proactive alerts + BigQuery |
-| 7. Cleanup | 🔄 Partial | Docker works, needs README |
+| 6A. Topology Diagram | ⏳ TODO | README + UI |
+| 6B. UI Data Flow | 🔄 Partial | Colors done, need decision animations |
+| 6C. Metrics Dashboard | ⏳ TODO | Streaming health panel |
+| 6D. Proactive Gemini | ⏳ TODO | Stream monitoring + alerts |
+| 6E. Congestion Demo | ⏳ TODO | Stress test button |
+| 6F. BigQuery Sink | ⏳ TODO | If time permits |
+| 7. Cleanup | 🔄 Partial | Docker works, needs README + license |
 | 8. Demo | ⏳ TODO | |
 
 **Remaining Priority Order:**
 1. **Confluent Cloud** - Must demonstrate real Confluent integration
-2. **Proactive Gemini** - "AI on data in motion" differentiator
-3. **BigQuery Sink** - Shows full Google Cloud integration
-4. **README + License** - Judge requirements
-5. **Demo video** - 3-minute walkthrough
+2. **UI Data Flow** - Decision animations + colors (quick win, high visual impact)
+3. **Streaming Metrics** - Show throughput, latency (proves it's real-time)
+4. **Proactive Gemini** - "AI on data in motion" differentiator
+5. **Topology Diagram** - README + UI header
+6. **Congestion Demo** - Stress test for wow factor
+7. **README + License** - Judge requirements
+8. **Demo video** - 3-minute walkthrough
 
 ---
 
