@@ -132,11 +132,16 @@ Anything beyond this is optional.
 - [x] Implement 11 tool functions (6 query + 3 simulation + 2 robot control)
 - [x] Automatic function calling via SDK
 - [x] Q&A panel in UI with verbose mode
+- [x] SSE streaming responses (real-time text display)
+- [x] Markdown rendering for formatted output
+- [x] Conversation history for follow-up questions
+- [x] Resizable Ask Gemini panel with drag handle
+- [x] Loading indicator with tool call progress
 
 ### Deliverables
-- [x] `backend/src/gemini.py` - Automatic function calling
+- [x] `backend/src/gemini.py` - Automatic function calling + streaming
 - [x] `backend/src/tools.py` - 11 tool functions
-- [x] Working end-to-end: question → tools → answer
+- [x] Working end-to-end: question → tools → streaming answer
 
 ---
 
@@ -152,7 +157,7 @@ Anything beyond this is optional.
 - [ ] Test full pipeline on Confluent Cloud
 - [ ] Capture Confluent Console screenshots (topics, throughput, metrics)
 - [ ] Document Confluent Cloud setup in README
-- [ ] Add a link in the webapp to confluent cloud metrics (only when connected to a Confluent Cloud cluster)
+- [x] Add Kafka UI link in webapp header (configurable via VITE_CONFLUENT_URL)
 
 ### Environment Variables
 ```bash
@@ -236,8 +241,10 @@ Make streaming **feel** real-time in the UI.
 
 ### Tasks
 - [ ] Add CSS animation for new decisions (fade-in + pulse)
-- [x] Color-code decision badges by action type ✅ DONE
-- [x] Color-code robot icons in grid ✅ DONE
+- [x] Color-code decision badges by action type
+- [x] Color-code robot icons in grid
+- [x] Robot color legend in metrics panel
+- [x] Robot hover highlighting (hover tile → glow on map)
 - [ ] Add "Decisions/sec" counter in metrics panel
 - [ ] Optional: animated connection lines on map
 
@@ -322,6 +329,7 @@ Stream decisions to BigQuery for real-time analytics.
 ### Tasks
 - [x] `docker compose up` works from clean clone
 - [x] `.env.example` complete
+- [x] Docker hot-reload dev mode (`docker-compose.override.yml`)
 - [ ] README quickstart verified
 - [ ] Add OSI license file (MIT or Apache-2.0)
 - [ ] Remove dead code and TODOs
@@ -397,15 +405,15 @@ Stream decisions to BigQuery for real-time analytics.
 | 1. Simulator | ✅ Done | A* pathfinding, waypoints, destination pause, manual override |
 | 2. Stream Processor | ✅ Done | Risk scoring, decisions applied to simulator |
 | 3. Control Center UI | ✅ Done | Full UI, color-coded robots, collapsible panels |
-| 4. Gemini Copilot | ✅ Done | 11 tools, auto function calling |
-| 5. Confluent Cloud | ⏳ TODO | **PRIORITY** |
+| 4. Gemini Copilot | ✅ Done | 11 tools, streaming, markdown, conversation history |
+| 5. Confluent Cloud | 🔄 Partial | Kafka UI link done, cluster setup pending |
 | 6A. Topology Diagram | ⏳ TODO | README + UI |
-| 6B. UI Data Flow | 🔄 Partial | Colors done, need decision animations |
+| 6B. UI Data Flow | 🔄 Partial | Colors + legend + hover done, need decision animations |
 | 6C. Metrics Dashboard | ⏳ TODO | Streaming health panel |
 | 6D. Proactive Gemini | ⏳ TODO | Stream monitoring + alerts |
 | 6E. Congestion Demo | ⏳ TODO | Stress test button |
 | 6F. BigQuery Sink | ⏳ TODO | If time permits |
-| 7. Cleanup | 🔄 Partial | Docker works, needs README + license |
+| 7. Cleanup | 🔄 Partial | Docker + dev mode done, needs README + license |
 | 8. Demo | ⏳ TODO | |
 
 **Remaining Priority Order:**
