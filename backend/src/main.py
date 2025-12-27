@@ -15,7 +15,7 @@ from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
 from .config import settings
-from .gemini import ask_copilot, OperatorAnswer
+from .gemini import ask_copilot, ask_copilot_stream, OperatorAnswer
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -67,6 +67,7 @@ async def consume_loop():
         consumer.subscribe([
             settings.coordination_decisions_topic,
             settings.coordination_state_topic,
+            settings.zone_context_topic,
         ])
         logger.info("Kafka consumer started")
 
@@ -89,6 +90,8 @@ async def consume_loop():
                     buffer.add_decision(value)
                 elif topic == settings.coordination_state_topic:
                     buffer.add_robot_state(value)
+                elif topic == settings.zone_context_topic:
+                    buffer.update_zone(value)
 
             except Exception as e:
                 logger.error(f"Error processing message: {e}")
@@ -140,8 +143,14 @@ app.add_middleware(
 
 
 # Request/Response models
+class ChatMessage(BaseModel):
+    role: str  # "user" or "model"
+    content: str
+
+
 class QuestionRequest(BaseModel):
     question: str
+    history: list[ChatMessage] = []
 
 
 class ScenarioToggle(BaseModel):
@@ -232,8 +241,12 @@ async def ask_question(request: QuestionRequest):
         for robot_id, states in buffer.robot_states.items()
     }
 
+    # Convert history to list of dicts
+    history = [{"role": m.role, "content": m.content} for m in request.history]
+
     answer = await ask_copilot(
         question=request.question,
+        history=history,
         decisions=list(buffer.decisions),
         robot_states=robot_states,
         zone_states=buffer.zone_states,
@@ -241,6 +254,36 @@ async def ask_question(request: QuestionRequest):
     )
 
     return answer
+
+
+@app.post("/ask/stream")
+async def ask_question_stream(request: QuestionRequest):
+    """Stream a response from the Gemini operator copilot.
+
+    Returns Server-Sent Events with JSON payloads:
+    - {"type": "tool", "name": "..."} - tool being called
+    - {"type": "chunk", "text": "..."} - text chunk
+    - {"type": "done", "confidence": "HIGH"} - completion
+    - {"type": "error", "message": "..."} - error
+    """
+    robot_states = {
+        robot_id: list(states)
+        for robot_id, states in buffer.robot_states.items()
+    }
+    history = [{"role": m.role, "content": m.content} for m in request.history]
+
+    async def event_generator():
+        async for event in ask_copilot_stream(
+            question=request.question,
+            history=history,
+            decisions=list(buffer.decisions),
+            robot_states=robot_states,
+            zone_states=buffer.zone_states,
+            current_state=buffer.current_state,
+        ):
+            yield {"data": event}
+
+    return EventSourceResponse(event_generator())
 
 
 # Proxy endpoints to simulator

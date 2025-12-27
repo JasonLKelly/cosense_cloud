@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Robot, API_URL } from './types'
+import { Robot, API_URL, CONFLUENT_URL } from './types'
 import { useSimState } from './hooks/useSimState'
 import { useGemini } from './hooks/useGemini'
 import { useMap } from './hooks/useMap'
@@ -31,11 +31,14 @@ export default function App() {
     loading: geminiLoading,
     response: geminiResponse,
     error: geminiError,
+    streamingText,
+    streamingTools,
   } = useGemini()
 
   const { map, error: mapError } = useMap('zone-c')
 
   const [selectedRobotId, setSelectedRobotId] = useState<string | null>(null)
+  const [hoveredRobotId, setHoveredRobotId] = useState<string | null>(null)
   const [verboseMode, setVerboseMode] = useState(false)
   const [showResetDialog, setShowResetDialog] = useState(false)
 
@@ -95,6 +98,14 @@ export default function App() {
               <span>Time: {state.sim_time.toFixed(1)}s</span>
             </>
           )}
+          <a
+            href={CONFLUENT_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="header-link"
+          >
+            Kafka UI
+          </a>
         </div>
       </header>
 
@@ -111,6 +122,7 @@ export default function App() {
             robots={state?.robots || []}
             humans={state?.humans || []}
             selectedRobotId={selectedRobotId}
+            hoveredRobotId={hoveredRobotId}
             onRobotClick={handleRobotClick}
           />
         </div>
@@ -124,6 +136,7 @@ export default function App() {
           onToggleConnectivity={toggleConnectivity}
           onDecisionsExpandedChange={setPollDecisions}
           onRobotClick={handleRobotClick}
+          onRobotHover={setHoveredRobotId}
         />
       </div>
 
@@ -132,6 +145,8 @@ export default function App() {
         loading={geminiLoading}
         response={geminiResponse}
         error={geminiError}
+        streamingText={streamingText}
+        streamingTools={streamingTools}
         onAsk={ask}
         onClear={clear}
         verboseMode={verboseMode}

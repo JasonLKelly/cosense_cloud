@@ -213,6 +213,24 @@ async def reset_scenario(params: ResetRequest | None = None):
     return {"status": "reset", "robot_count": len(world.robots), "human_count": len(world.humans)}
 
 
+@app.get("/scenario/status")
+async def get_scenario_status():
+    """Get current scenario status for Gemini tools."""
+    if not world:
+        return {"running": False, "error": "World not initialized"}
+
+    return {
+        "running": world.running,
+        "sim_time": world.sim_time,
+        "robot_count": len(world.robots),
+        "human_count": len(world.humans),
+        "robot_ids": [r.robot_id for r in world.robots],
+        "visibility": world.zone.visibility,
+        "connectivity": world.zone.connectivity,
+        "congestion_level": world.zone.congestion_level,
+    }
+
+
 # Individual robot control
 @app.post("/robots/{robot_id}/stop")
 async def stop_robot(robot_id: str):

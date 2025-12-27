@@ -9,6 +9,7 @@ interface MetricsPanelProps {
   onToggleConnectivity: (connectivity: 'normal' | 'degraded' | 'offline') => void
   onDecisionsExpandedChange: (expanded: boolean) => void
   onRobotClick: (robot: Robot) => void
+  onRobotHover: (robotId: string | null) => void
 }
 
 export function MetricsPanel({
@@ -19,6 +20,7 @@ export function MetricsPanel({
   onToggleConnectivity,
   onDecisionsExpandedChange,
   onRobotClick,
+  onRobotHover,
 }: MetricsPanelProps) {
   const [decisionsExpanded, setDecisionsExpanded] = useState(true)
   const [robotsExpanded, setRobotsExpanded] = useState(true)
@@ -120,12 +122,21 @@ export function MetricsPanel({
           <span className="collapse-icon">{robotsExpanded ? '▼' : '▶'}</span>
         </h4>
         {robotsExpanded && (
+          <>
+          <div className="robot-legend">
+            <span className="legend-item"><span className="legend-dot continue"></span>OK</span>
+            <span className="legend-item"><span className="legend-dot slow"></span>Slow</span>
+            <span className="legend-item"><span className="legend-dot stop"></span>Stop</span>
+            <span className="legend-item"><span className="legend-dot reroute"></span>Reroute</span>
+          </div>
           <div className="robot-grid">
             {robots.map((robot) => (
               <div
                 key={robot.robot_id}
                 className={`robot-grid-item ${getRobotStateClass(robot)}`}
                 onClick={() => onRobotClick(robot)}
+                onMouseEnter={() => onRobotHover(robot.robot_id)}
+                onMouseLeave={() => onRobotHover(null)}
                 title={`${robot.robot_id} - ${robot.commanded_action || 'CONTINUE'}`}
               >
                 <span className="robot-grid-id">
@@ -137,6 +148,7 @@ export function MetricsPanel({
               <div className="text-muted text-small">No robots</div>
             )}
           </div>
+          </>
         )}
       </div>
 

@@ -1,8 +1,10 @@
 """Gemini copilot with tool calling for operator Q&A."""
 
+import asyncio
+import json
 import logging
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, AsyncIterator
 
 import httpx
 from google import genai
@@ -492,6 +494,7 @@ def get_client() -> genai.Client | None:
 
 async def ask_copilot(
     question: str,
+    history: list[dict],
     decisions: list[dict],
     robot_states: dict[str, list[dict]],
     zone_states: dict[str, dict],
@@ -501,6 +504,7 @@ async def ask_copilot(
 
     Args:
         question: The operator's question
+        history: Conversation history [{"role": "user"|"model", "content": "..."}]
         decisions: Recent coordination decisions
         robot_states: Historical robot states by robot_id
         zone_states: Current zone states by zone_id
@@ -526,10 +530,24 @@ async def ask_copilot(
         simulator_url=settings.simulator_url,
     ))
 
-    try:
-        response = client.models.generate_content(
+    # Build conversation contents with history
+    contents = []
+    for msg in history:
+        contents.append(types.Content(
+            role=msg["role"],
+            parts=[types.Part(text=msg["content"])],
+        ))
+    # Add current question
+    contents.append(types.Content(
+        role="user",
+        parts=[types.Part(text=question)],
+    ))
+
+    def _call_gemini():
+        """Synchronous Gemini call to run in thread pool."""
+        return client.models.generate_content(
             model=settings.gemini_model,
-            contents=question,
+            contents=contents,
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,
                 tools=TOOLS,
@@ -539,14 +557,18 @@ async def ask_copilot(
             ),
         )
 
+    try:
+        # Run blocking Gemini call in thread pool to avoid blocking the event loop
+        response = await asyncio.to_thread(_call_gemini)
+
         # Extract tool calls from response (for logging)
         tool_calls = []
-        if hasattr(response, 'automatic_function_calling_history'):
+        if hasattr(response, 'automatic_function_calling_history') and response.automatic_function_calling_history:
             for entry in response.automatic_function_calling_history:
-                if hasattr(entry, 'parts'):
+                if hasattr(entry, 'parts') and entry.parts:
                     for part in entry.parts:
-                        if hasattr(part, 'function_call'):
-                            fc = part.function_call
+                        fc = getattr(part, 'function_call', None)
+                        if fc and hasattr(fc, 'name') and fc.name:
                             tool_calls.append(ToolCallLog(
                                 tool=fc.name,
                                 params=dict(fc.args) if fc.args else {},
@@ -569,3 +591,125 @@ async def ask_copilot(
             confidence="INSUFFICIENT",
             error=str(e),
         )
+
+
+async def ask_copilot_stream(
+    question: str,
+    history: list[dict],
+    decisions: list[dict],
+    robot_states: dict[str, list[dict]],
+    zone_states: dict[str, dict],
+    current_state: dict[str, dict],
+) -> AsyncIterator[str]:
+    """Stream responses from Gemini copilot.
+
+    Yields SSE-formatted events:
+    - {"type": "tool", "name": "...", "params": {...}}
+    - {"type": "chunk", "text": "..."}
+    - {"type": "done", "confidence": "HIGH"}
+    - {"type": "error", "message": "..."}
+    """
+    client = get_client()
+    if client is None:
+        yield json.dumps({"type": "error", "message": "Gemini not configured"})
+        return
+
+    # Set context for tool functions
+    set_tool_context(ToolContext(
+        decisions=decisions,
+        robot_states=robot_states,
+        zone_states=zone_states,
+        current_state=current_state,
+        simulator_url=settings.simulator_url,
+    ))
+
+    # Build conversation contents with history
+    contents = []
+    for msg in history:
+        contents.append(types.Content(
+            role=msg["role"],
+            parts=[types.Part(text=msg["content"])],
+        ))
+    contents.append(types.Content(
+        role="user",
+        parts=[types.Part(text=question)],
+    ))
+
+    tool_calls = []
+
+    def _call_gemini_stream():
+        """Synchronous streaming Gemini call."""
+        return client.models.generate_content_stream(
+            model=settings.gemini_model,
+            contents=contents,
+            config=types.GenerateContentConfig(
+                system_instruction=SYSTEM_PROMPT,
+                tools=TOOLS,
+                automatic_function_calling=types.AutomaticFunctionCallingConfig(
+                    maximum_remote_calls=10,
+                ),
+            ),
+        )
+
+    try:
+        # Get the streaming response iterator in thread
+        stream = await asyncio.to_thread(_call_gemini_stream)
+
+        # Use a queue for true streaming between thread and async generator
+        import queue
+        event_queue: queue.Queue = queue.Queue()
+
+        def _consume_stream():
+            """Consume the stream in a thread, pushing events to queue."""
+            seen_tools = set()
+
+            for chunk in stream:
+                # Extract tool calls if present
+                if hasattr(chunk, 'automatic_function_calling_history') and chunk.automatic_function_calling_history:
+                    for entry in chunk.automatic_function_calling_history:
+                        if hasattr(entry, 'parts') and entry.parts:
+                            for part in entry.parts:
+                                fc = getattr(part, 'function_call', None)
+                                if fc and hasattr(fc, 'name') and fc.name and fc.name not in seen_tools:
+                                    seen_tools.add(fc.name)
+                                    event_queue.put({"type": "tool", "name": fc.name})
+
+                # Extract text from chunk candidates
+                try:
+                    if chunk.candidates:
+                        for candidate in chunk.candidates:
+                            if candidate.content and candidate.content.parts:
+                                for part in candidate.content.parts:
+                                    if hasattr(part, 'text') and part.text:
+                                        event_queue.put({"type": "chunk", "text": part.text})
+                except Exception:
+                    # Fallback: try chunk.text directly
+                    if hasattr(chunk, 'text') and chunk.text:
+                        event_queue.put({"type": "chunk", "text": chunk.text})
+
+            event_queue.put({"type": "done", "has_tools": len(seen_tools) > 0})
+
+        # Start consuming in background thread
+        import threading
+        thread = threading.Thread(target=_consume_stream)
+        thread.start()
+
+        # Yield events as they arrive
+        while True:
+            try:
+                event = event_queue.get(timeout=0.1)
+                if event["type"] == "done":
+                    confidence = "HIGH" if event.get("has_tools") else "MEDIUM"
+                    yield json.dumps({"type": "done", "confidence": confidence})
+                    break
+                yield json.dumps(event)
+            except queue.Empty:
+                if not thread.is_alive():
+                    break
+                await asyncio.sleep(0.05)
+
+        thread.join()
+
+    except Exception as e:
+        logger.error(f"Gemini streaming error: {e}")
+        yield json.dumps({"type": "error", "message": str(e)})

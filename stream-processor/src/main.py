@@ -242,26 +242,28 @@ def main():
     decisions_topic = app.topic(settings.coordination_decisions_topic, value_serializer="json")
     state_topic = app.topic(settings.coordination_state_topic, value_serializer="json")
 
-    # Process robot telemetry -> decisions
+    # Process robot telemetry -> state + decisions
     sdf_robots = app.dataframe(robot_topic)
 
-    # Update state and emit decisions
-    sdf_robots = sdf_robots.apply(
-        lambda value: (
-            state.update_robot(value),
-            process_robot_telemetry(value),
-        )[1]  # Return just the decision (or None)
-    )
+    # Process each robot update: emit state and optionally a decision
+    def process_and_emit(value: dict) -> dict:
+        """Update state, create coordination state, and check for decisions."""
+        state.update_robot(value)
+        coord_state = create_coordination_state(value)
+        decision = process_robot_telemetry(value)
+        # Return both, we'll handle them in the pipeline
+        return {"state": coord_state, "decision": decision}
 
-    # Filter out None (no decision to emit)
-    sdf_robots = sdf_robots.filter(lambda value: value is not None)
+    sdf_robots = sdf_robots.apply(process_and_emit)
 
-    # Produce decisions
-    sdf_robots.to_topic(decisions_topic)
+    # Emit coordination state for every update
+    sdf_state = sdf_robots.apply(lambda v: v["state"])
+    sdf_state.to_topic(state_topic)
 
-    # Also emit coordination state periodically
-    # Note: In a real QuixStreams app, you'd use windowed aggregations
-    # For simplicity, we emit state with each robot update
+    # Emit decisions only when present
+    sdf_decisions = sdf_robots.apply(lambda v: v["decision"])
+    sdf_decisions = sdf_decisions.filter(lambda v: v is not None)
+    sdf_decisions.to_topic(decisions_topic)
 
     # Process human telemetry (just update state)
     sdf_humans = app.dataframe(human_topic)

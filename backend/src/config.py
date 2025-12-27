@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     # Topics to consume
     coordination_state_topic: str = "coordination.state"
     coordination_decisions_topic: str = "coordination.decisions"
+    zone_context_topic: str = "zone.context"
 
     # Simulator service (for forwarding commands)
     simulator_url: str = "http://simulator:8000"

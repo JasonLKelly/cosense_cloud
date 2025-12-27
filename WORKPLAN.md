@@ -152,6 +152,7 @@ Anything beyond this is optional.
 - [ ] Test full pipeline on Confluent Cloud
 - [ ] Capture Confluent Console screenshots (topics, throughput, metrics)
 - [ ] Document Confluent Cloud setup in README
+- [ ] Add a link in the webapp to confluent cloud metrics (only when connected to a Confluent Cloud cluster)
 
 ### Environment Variables
 ```bash

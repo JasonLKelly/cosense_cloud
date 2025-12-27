@@ -104,6 +104,21 @@ body {
   font-size: 14px;
 }
 
+.header-link {
+  color: var(--robot-continue);
+  text-decoration: none;
+  padding: 4px 8px;
+  border: 1px solid var(--robot-continue);
+  border-radius: 4px;
+  font-size: 12px;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.header-link:hover {
+  background: var(--robot-continue);
+  color: #000;
+}
+
 /* ============================================
    Buttons
    ============================================ */
@@ -198,6 +213,12 @@ body {
 
 .map-entity.robot.selected {
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5);
+}
+
+.map-entity.robot.hovered {
+  transform: scale(1.5);
+  z-index: 20;
+  box-shadow: 0 0 12px 4px rgba(255, 255, 255, 0.8);
 }
 
 .map-entity.human {
@@ -317,20 +338,61 @@ body {
   pointer-events: none;
 }
 
+.robot-legend {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.legend-dot.continue { background: var(--robot-continue); }
+.legend-dot.slow { background: var(--robot-slow); }
+.legend-dot.stop { background: var(--robot-stop); }
+.legend-dot.reroute { background: var(--robot-reroute); }
+
 /* ============================================
    Bottom Drawer (Ask Gemini)
    ============================================ */
 .bottom-drawer {
-  height: var(--bottom-drawer-height);
   background: var(--bg-secondary);
   border-top: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  transition: height var(--transition-normal);
+  position: relative;
 }
 
 .bottom-drawer.collapsed {
-  height: 40px;
+  height: 40px !important;
+}
+
+.resize-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  cursor: ns-resize;
+  background: transparent;
+  z-index: 10;
+}
+
+.resize-handle:hover,
+.resize-handle:active {
+  background: var(--robot-continue);
+  opacity: 0.5;
 }
 
 .bottom-drawer-header {
@@ -350,12 +412,16 @@ body {
   flex: 1;
   padding: 0 var(--spacing-md) var(--spacing-md);
   overflow-y: auto;
+  min-height: 0; /* Required for flex child to scroll */
+  display: flex;
+  flex-direction: column;
 }
 
 .gemini-input-row {
   display: flex;
   gap: var(--spacing-sm);
   margin-bottom: var(--spacing-md);
+  flex-shrink: 0; /* Don't shrink the input row */
 }
 
 .gemini-input {
@@ -377,12 +443,111 @@ body {
   color: var(--text-dim);
 }
 
+.gemini-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--bg-tertiary);
+  border-top-color: var(--robot-continue);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.gemini-streaming {
+  background: var(--bg-primary);
+  border-radius: 4px;
+  padding: var(--spacing-md);
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.streaming-tools {
+  margin-bottom: var(--spacing-sm);
+  flex-shrink: 0;
+}
+
+.streaming-text,
+.response-text {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.streaming-text p,
+.response-text p {
+  margin: 0 0 0.5em 0;
+}
+
+.streaming-text p:last-child,
+.response-text p:last-child {
+  margin-bottom: 0;
+}
+
+.streaming-text ul,
+.streaming-text ol,
+.response-text ul,
+.response-text ol {
+  margin: 0.5em 0;
+  padding-left: 1.5em;
+}
+
+.streaming-text li,
+.response-text li {
+  margin: 0.25em 0;
+}
+
+.streaming-text code,
+.response-text code {
+  background: var(--bg-tertiary);
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+.streaming-text pre,
+.response-text pre {
+  background: var(--bg-tertiary);
+  padding: 0.5em;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+.streaming-text pre code,
+.response-text pre code {
+  background: none;
+  padding: 0;
+}
+
+.cursor {
+  animation: blink 1s step-end infinite;
+  color: var(--robot-continue);
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
 .gemini-response {
   background: var(--bg-primary);
   border-radius: 4px;
   padding: var(--spacing-md);
   font-size: 14px;
   line-height: 1.5;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 
 .gemini-tool-calls {

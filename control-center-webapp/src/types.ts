@@ -116,3 +116,6 @@ export interface WarehouseMap {
 
 // API URL from environment
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+
+// Confluent UI URL - local Control Center or Confluent Cloud
+export const CONFLUENT_URL = import.meta.env.VITE_CONFLUENT_URL || 'http://localhost:9021'

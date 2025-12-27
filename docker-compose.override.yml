@@ -1,0 +1,31 @@
+# Development overrides - hot-reload for all services
+# This file is automatically merged with docker-compose.yml
+# To run without it: docker compose -f docker-compose.yml up
+
+services:
+  simulator:
+    volumes:
+      - ./simulator/src:/app/src:ro
+      - ./maps:/app/maps:ro
+    command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  stream-processor:
+    volumes:
+      - ./stream-processor/src:/app/src:ro
+    command: ["python", "-m", "src.main"]
+    # Note: stream-processor doesn't have built-in reload, restart container on changes
+
+  backend:
+    volumes:
+      - ./backend/src:/app/src:ro
+      - ./maps:/app/maps:ro
+      - ~/.config/gcloud/application_default_credentials.json:/gcp/application_default_credentials.json:ro
+    command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8080", "--reload"]
+
+  control-center-webapp:
+    build:
+      context: ./control-center-webapp
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./control-center-webapp/src:/app/src
+      - ./control-center-webapp/public:/app/public

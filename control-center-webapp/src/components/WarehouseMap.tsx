@@ -6,6 +6,7 @@ interface WarehouseMapProps {
   robots: Robot[]
   humans: Human[]
   selectedRobotId: string | null
+  hoveredRobotId: string | null
   onRobotClick: (robot: Robot) => void
 }
 
@@ -100,6 +101,7 @@ export function WarehouseMapView({
   robots,
   humans,
   selectedRobotId,
+  hoveredRobotId,
   onRobotClick,
 }: WarehouseMapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -225,11 +227,12 @@ export function WarehouseMapView({
       {robots.map((robot) => {
         const color = ROBOT_COLORS[robot.commanded_action] || ROBOT_COLORS.CONTINUE
         const isSelected = selectedRobotId === robot.robot_id
+        const isHovered = hoveredRobotId === robot.robot_id
 
         return (
           <div
             key={robot.robot_id}
-            className={`map-entity robot ${robot.commanded_action.toLowerCase()} ${isSelected ? 'selected' : ''}`}
+            className={`map-entity robot ${robot.commanded_action.toLowerCase()} ${isSelected ? 'selected' : ''} ${isHovered ? 'hovered' : ''}`}
             style={{
               left: robot.x * scale - 10,
               top: robot.y * scale - 10,
