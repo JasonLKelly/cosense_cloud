@@ -9,6 +9,7 @@ from collections import defaultdict
 
 import httpx
 from quixstreams import Application
+from quixstreams.models.topics import TopicConfig
 
 from .config import settings
 from .risk import assess_risk, create_decision_event, Action
@@ -223,24 +224,30 @@ def main():
     # Add Confluent Cloud auth if configured
     if settings.kafka_api_key and settings.kafka_api_secret:
         logger.info("Using Confluent Cloud authentication")
-        app_kwargs["broker_address"] = {
-            "bootstrap.servers": settings.kafka_brokers,
-            "security.protocol": settings.kafka_security_protocol or "SASL_SSL",
-            "sasl.mechanism": settings.kafka_sasl_mechanism or "PLAIN",
-            "sasl.username": settings.kafka_api_key,
-            "sasl.password": settings.kafka_api_secret,
-        }
+        from quixstreams.kafka.configuration import ConnectionConfig
+        app_kwargs["broker_address"] = ConnectionConfig(
+            bootstrap_servers=settings.kafka_brokers,
+            security_protocol=settings.kafka_security_protocol or "SASL_SSL",
+            sasl_mechanism=settings.kafka_sasl_mechanism or "PLAIN",
+            sasl_username=settings.kafka_api_key,
+            sasl_password=settings.kafka_api_secret,
+        )
 
     app = Application(**app_kwargs)
 
+    # Topic config - Confluent Cloud requires replication_factor=3
+    topic_config = None
+    if settings.kafka_api_key and settings.kafka_api_secret:
+        topic_config = TopicConfig(num_partitions=1, replication_factor=3)
+
     # Input topics
-    robot_topic = app.topic(settings.robot_telemetry_topic, value_deserializer="json")
-    human_topic = app.topic(settings.human_telemetry_topic, value_deserializer="json")
-    zone_topic = app.topic(settings.zone_context_topic, value_deserializer="json")
+    robot_topic = app.topic(settings.robot_telemetry_topic, value_deserializer="json", config=topic_config)
+    human_topic = app.topic(settings.human_telemetry_topic, value_deserializer="json", config=topic_config)
+    zone_topic = app.topic(settings.zone_context_topic, value_deserializer="json", config=topic_config)
 
     # Output topics
-    decisions_topic = app.topic(settings.coordination_decisions_topic, value_serializer="json")
-    state_topic = app.topic(settings.coordination_state_topic, value_serializer="json")
+    decisions_topic = app.topic(settings.coordination_decisions_topic, value_serializer="json", config=topic_config)
+    state_topic = app.topic(settings.coordination_state_topic, value_serializer="json", config=topic_config)
 
     # Process robot telemetry -> state + decisions
     sdf_robots = app.dataframe(robot_topic)

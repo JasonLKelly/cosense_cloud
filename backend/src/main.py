@@ -59,50 +59,55 @@ def create_consumer() -> Consumer:
 
 
 async def consume_loop():
-    """Background task to consume Kafka messages."""
+    """Background task to consume Kafka messages with retry."""
     global consumer
 
-    try:
-        consumer = create_consumer()
-        consumer.subscribe([
-            settings.coordination_decisions_topic,
-            settings.coordination_state_topic,
-            settings.zone_context_topic,
-        ])
-        logger.info("Kafka consumer started")
+    while True:
+        try:
+            consumer = create_consumer()
+            consumer.subscribe([
+                settings.coordination_decisions_topic,
+                settings.coordination_state_topic,
+                settings.zone_context_topic,
+            ])
+            logger.info("Kafka consumer connected")
 
-        while True:
-            msg = consumer.poll(timeout=0.1)
-            if msg is None:
-                await asyncio.sleep(0.01)
-                continue
+            while True:
+                msg = consumer.poll(timeout=0.1)
+                if msg is None:
+                    await asyncio.sleep(0.01)
+                    continue
 
-            if msg.error():
-                if msg.error().code() != KafkaError._PARTITION_EOF:
-                    logger.error(f"Kafka error: {msg.error()}")
-                continue
+                if msg.error():
+                    if msg.error().code() != KafkaError._PARTITION_EOF:
+                        logger.error(f"Kafka error: {msg.error()}")
+                    continue
 
-            try:
-                topic = msg.topic()
-                value = json.loads(msg.value().decode("utf-8"))
+                try:
+                    topic = msg.topic()
+                    value = json.loads(msg.value().decode("utf-8"))
 
-                if topic == settings.coordination_decisions_topic:
-                    buffer.add_decision(value)
-                elif topic == settings.coordination_state_topic:
-                    buffer.add_robot_state(value)
-                elif topic == settings.zone_context_topic:
-                    buffer.update_zone(value)
+                    if topic == settings.coordination_decisions_topic:
+                        buffer.add_decision(value)
+                    elif topic == settings.coordination_state_topic:
+                        buffer.add_robot_state(value)
+                    elif topic == settings.zone_context_topic:
+                        buffer.update_zone(value)
 
-            except Exception as e:
-                logger.error(f"Error processing message: {e}")
+                except Exception as e:
+                    logger.error(f"Error processing message: {e}")
 
-            await asyncio.sleep(0)  # Yield to event loop
+                await asyncio.sleep(0)  # Yield to event loop
 
-    except Exception as e:
-        logger.error(f"Consumer error: {e}")
-    finally:
-        if consumer:
-            consumer.close()
+        except Exception as e:
+            logger.warning(f"Kafka consumer error, retrying in 2s: {e}")
+            if consumer:
+                try:
+                    consumer.close()
+                except Exception:
+                    pass
+                consumer = None
+            await asyncio.sleep(2)
 
 
 @asynccontextmanager
