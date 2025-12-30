@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     schema_registry_api_key: str = ""
     schema_registry_api_secret: str = ""
 
+    # Topic prefix for namespacing (e.g., "local", "prod")
+    kafka_topic_prefix: str = ""
+
     # Simulation
     tick_rate_hz: float = 10.0
     zone_id: str = "zone-c"
@@ -37,6 +40,12 @@ class Settings(BaseSettings):
 
     class Config:
         env_prefix = ""
+
+    def topic(self, name: str) -> str:
+        """Get prefixed topic name."""
+        if self.kafka_topic_prefix:
+            return f"{self.kafka_topic_prefix}.{name}"
+        return name
 
     def get_kafka_config(self) -> dict:
         """Get Kafka producer/consumer config dict."""

@@ -12,10 +12,12 @@ import './styles.css'
 
 export default function App() {
   const [pollDecisions, setPollDecisions] = useState(true)
+  const [pollAnomalies, setPollAnomalies] = useState(true)
 
   const {
     state,
     decisions,
+    anomalies,
     error: simError,
     startSim,
     stopSim,
@@ -23,7 +25,7 @@ export default function App() {
     toggleConnectivity,
     stopRobot,
     startRobot,
-  } = useSimState({ pollDecisions })
+  } = useSimState({ pollDecisions, pollAnomalies })
 
   const {
     ask,
@@ -132,9 +134,11 @@ export default function App() {
           zone={state?.zone || null}
           robots={state?.robots || []}
           decisions={decisions}
+          anomalies={anomalies}
           onToggleVisibility={toggleVisibility}
           onToggleConnectivity={toggleConnectivity}
           onDecisionsExpandedChange={setPollDecisions}
+          onAnomaliesExpandedChange={setPollAnomalies}
           onRobotClick={handleRobotClick}
           onRobotHover={setHoveredRobotId}
         />

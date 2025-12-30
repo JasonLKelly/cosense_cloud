@@ -3,6 +3,8 @@
 import asyncio
 import json
 import logging
+import time
+import uuid
 from collections import deque
 from contextlib import asynccontextmanager
 from typing import Literal
@@ -30,6 +32,7 @@ class StateBuffer:
         self.robot_states: dict[str, deque[dict]] = {}
         self.zone_states: dict[str, dict] = {}
         self.current_state: dict[str, dict] = {}  # Latest state per robot
+        self.anomaly_alerts: deque[dict] = deque(maxlen=settings.max_anomalies_buffer)
 
     def add_decision(self, decision: dict):
         self.decisions.append(decision)
@@ -44,6 +47,9 @@ class StateBuffer:
     def update_zone(self, zone: dict):
         self.zone_states[zone["zone_id"]] = zone
 
+    def add_anomaly_alert(self, alert: dict):
+        self.anomaly_alerts.append(alert)
+
 
 buffer = StateBuffer()
 consumer: Consumer | None = None
@@ -53,7 +59,7 @@ consumer_task: asyncio.Task | None = None
 def create_consumer() -> Consumer:
     """Create Kafka consumer."""
     config = settings.get_kafka_config()
-    config["group.id"] = settings.consumer_group
+    config["group.id"] = settings.prefixed_consumer_group
     config["auto.offset.reset"] = "latest"
     return Consumer(config)
 
@@ -66,9 +72,10 @@ async def consume_loop():
         try:
             consumer = create_consumer()
             consumer.subscribe([
-                settings.coordination_decisions_topic,
-                settings.coordination_state_topic,
-                settings.zone_context_topic,
+                settings.topic(settings.coordination_decisions_topic),
+                settings.topic(settings.coordination_state_topic),
+                settings.topic(settings.zone_context_topic),
+                settings.topic(settings.anomaly_alerts_topic),
             ])
             logger.info("Kafka consumer connected")
 
@@ -87,12 +94,14 @@ async def consume_loop():
                     topic = msg.topic()
                     value = json.loads(msg.value().decode("utf-8"))
 
-                    if topic == settings.coordination_decisions_topic:
+                    if topic == settings.topic(settings.coordination_decisions_topic):
                         buffer.add_decision(value)
-                    elif topic == settings.coordination_state_topic:
+                    elif topic == settings.topic(settings.coordination_state_topic):
                         buffer.add_robot_state(value)
-                    elif topic == settings.zone_context_topic:
+                    elif topic == settings.topic(settings.zone_context_topic):
                         buffer.update_zone(value)
+                    elif topic == settings.topic(settings.anomaly_alerts_topic):
+                        buffer.add_anomaly_alert(value)
 
                 except Exception as e:
                     logger.error(f"Error processing message: {e}")
@@ -197,6 +206,20 @@ async def get_robot_decisions(robot_id: str, limit: int = 10):
     return robot_decisions[-limit:]
 
 
+# Anomaly alerts endpoints
+@app.get("/anomalies")
+async def get_anomalies(limit: int = 20):
+    """Get recent anomaly alerts from Flink AI pipeline."""
+    return list(buffer.anomaly_alerts)[-limit:]
+
+
+@app.get("/anomalies/{robot_id}")
+async def get_robot_anomalies(robot_id: str, limit: int = 10):
+    """Get recent anomaly alerts for a specific robot."""
+    robot_anomalies = [a for a in buffer.anomaly_alerts if a.get("robot_id") == robot_id]
+    return robot_anomalies[-limit:]
+
+
 # SSE stream for real-time updates
 @app.get("/stream")
 async def stream_updates():
@@ -256,6 +279,7 @@ async def ask_question(request: QuestionRequest):
         robot_states=robot_states,
         zone_states=buffer.zone_states,
         current_state=buffer.current_state,
+        anomaly_alerts=list(buffer.anomaly_alerts),
     )
 
     return answer
@@ -285,6 +309,7 @@ async def ask_question_stream(request: QuestionRequest):
             robot_states=robot_states,
             zone_states=buffer.zone_states,
             current_state=buffer.current_state,
+            anomaly_alerts=list(buffer.anomaly_alerts),
         ):
             yield {"data": event}
 
@@ -397,6 +422,89 @@ async def start_robot(robot_id: str):
             return response.json()
         except httpx.RequestError as e:
             raise HTTPException(status_code=503, detail=f"Simulator unavailable: {e}")
+
+
+# Debug endpoints
+class MockAnomalyRequest(BaseModel):
+    """Request for generating a mock anomaly alert."""
+    alert_type: Literal[
+        "DECISION_RATE_SPIKE",
+        "REPEATED_ROBOT_STOP",
+        "SENSOR_DISAGREEMENT_SPIKE"
+    ] = "DECISION_RATE_SPIKE"
+    severity: Literal["HIGH", "MEDIUM"] = "HIGH"
+    robot_id: str | None = None
+    zone_id: str = "zone-c"
+
+
+@app.post("/debug/mock-anomaly")
+async def create_mock_anomaly(request: MockAnomalyRequest | None = None):
+    """Create a mock anomaly alert for UI testing.
+
+    This endpoint allows testing the AI Alerts panel before Flink is deployed.
+    """
+    req = request or MockAnomalyRequest()
+    now_ms = int(time.time() * 1000)
+
+    # Generate context and AI explanation based on alert type
+    contexts = {
+        "DECISION_RATE_SPIKE": {
+            "context": f"Decision rate exceeded normal bounds in {req.zone_id}",
+            "ai_explanation": (
+                f"Zone {req.zone_id} is experiencing an unusual surge in safety interventions. "
+                "The decision rate has spiked significantly above the expected baseline, "
+                "which may indicate increased congestion or environmental changes. "
+                "Recommend monitoring zone conditions and considering temporary capacity reduction."
+            ),
+            "metric_name": "decision_count",
+            "actual_value": 15.0,
+            "forecast_value": 5.2,
+        },
+        "REPEATED_ROBOT_STOP": {
+            "context": f"Robot {req.robot_id or 'robot-1'} stopped multiple times in 30s",
+            "ai_explanation": (
+                f"Robot {req.robot_id or 'robot-1'} has been stopped 3 times in the last 30 seconds. "
+                "This pattern suggests either a persistent obstruction in its path or "
+                "sensor calibration issues. Recommend visual inspection of the robot's route "
+                "and checking for humans lingering in high-traffic areas."
+            ),
+            "metric_name": "stop_count_30s",
+            "actual_value": 3.0,
+            "forecast_value": 0.5,
+        },
+        "SENSOR_DISAGREEMENT_SPIKE": {
+            "context": f"Multiple sensor disagreements detected in {req.zone_id}",
+            "ai_explanation": (
+                f"Sensor disagreement events have spiked in {req.zone_id}. "
+                "When ultrasonic and BLE sensors report conflicting proximity data, "
+                "it may indicate environmental interference (dust, reflective surfaces) "
+                "or sensor degradation. Recommend sensor diagnostics for affected robots."
+            ),
+            "metric_name": "sensor_disagreement_count",
+            "actual_value": 4.0,
+            "forecast_value": 0.8,
+        },
+    }
+
+    alert_data = contexts[req.alert_type]
+    alert = {
+        "alert_id": f"{req.alert_type.lower()[:3]}-{now_ms}-{req.zone_id}",
+        "alert_type": req.alert_type,
+        "detected_at": now_ms,
+        "zone_id": req.zone_id,
+        "robot_id": req.robot_id or ("robot-1" if req.alert_type == "REPEATED_ROBOT_STOP" else None),
+        "metric_name": alert_data["metric_name"],
+        "actual_value": alert_data["actual_value"],
+        "forecast_value": alert_data["forecast_value"],
+        "lower_bound": alert_data["forecast_value"] * 0.5,
+        "upper_bound": alert_data["forecast_value"] * 1.5,
+        "severity": req.severity,
+        "context": alert_data["context"],
+        "ai_explanation": alert_data["ai_explanation"],
+    }
+
+    buffer.add_anomaly_alert(alert)
+    return {"status": "created", "alert": alert}
 
 
 # Map endpoint
