@@ -4,8 +4,11 @@ import atexit
 import json
 import logging
 import math
+import os
+import threading
 import time
 from collections import defaultdict
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
 import httpx
 from quixstreams import Application
@@ -16,6 +19,29 @@ from .risk import assess_risk, create_decision_event, Action
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+# Health check HTTP server for Cloud Run
+class HealthHandler(BaseHTTPRequestHandler):
+    """Simple health check handler."""
+
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/plain")
+        self.end_headers()
+        self.wfile.write(b"ok")
+
+    def log_message(self, format, *args):
+        pass  # Suppress logs
+
+
+def start_health_server():
+    """Start health check server in background thread."""
+    port = int(os.environ.get("PORT", 8080))
+    server = HTTPServer(("0.0.0.0", port), HealthHandler)
+    logger.info(f"Health server listening on port {port}")
+    server.serve_forever()
+
 
 # HTTP client for applying decisions to simulator
 http_client: httpx.Client | None = None
@@ -207,6 +233,10 @@ def create_coordination_state(robot: dict) -> dict:
 
 def main():
     """Main entry point."""
+    # Start health check server for Cloud Run
+    health_thread = threading.Thread(target=start_health_server, daemon=True)
+    health_thread.start()
+
     logger.info("Starting CoSense Stream Processor")
     logger.info(f"Kafka brokers: {settings.kafka_brokers}")
     if settings.apply_decisions:

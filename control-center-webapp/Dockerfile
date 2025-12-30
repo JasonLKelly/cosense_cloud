@@ -21,6 +21,8 @@ RUN npm install -g serve
 
 COPY --from=builder /app/dist ./dist
 
-EXPOSE 3000
+# PORT env var set by Cloud Run, default 3000 for local
+ENV PORT=3000
+EXPOSE $PORT
 
-CMD ["serve", "-s", "dist", "-l", "3000"]
+CMD serve -s dist -l $PORT

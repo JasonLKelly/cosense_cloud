@@ -37,6 +37,34 @@ gcloud artifacts repositories create cosense \
   --description="CoSense Cloud container images" \
   2>/dev/null || echo "  Repository 'cosense' already exists"
 
+# Grant Cloud Build service account necessary permissions
+echo "Granting IAM permissions to Cloud Build service account..."
+PROJECT_NUMBER=$(gcloud projects describe "$PROJECT_ID" --format='value(projectNumber)')
+
+# Storage access (for Cloud Build to upload/download source)
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+  --role="roles/storage.objectAdmin" \
+  --quiet >/dev/null
+
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com" \
+  --role="roles/storage.objectAdmin" \
+  --quiet >/dev/null
+
+# Artifact Registry access (for Cloud Build to push images)
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+  --role="roles/artifactregistry.writer" \
+  --quiet >/dev/null
+
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${PROJECT_NUMBER}@cloudbuild.gserviceaccount.com" \
+  --role="roles/artifactregistry.writer" \
+  --quiet >/dev/null
+
+echo "  Permissions granted"
+
 echo ""
 echo "=== Setup Complete ==="
 echo "Next step: ./deploy/cloud-run.sh"
