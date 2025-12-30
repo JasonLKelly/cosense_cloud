@@ -152,12 +152,14 @@ Anything beyond this is optional.
 **Key Benefit:** Confluent Cloud has built-in metrics UI showing topic throughput, consumer lag, and partition health — no need to build a custom metrics dashboard. Just screenshot the Console for the demo.
 
 ### Tasks
+- [x] Add SASL_SSL auth support to all services (simulator, stream-processor, backend)
+- [x] Add Kafka UI link in webapp header (configurable via VITE_CONFLUENT_URL)
+- [x] Document env vars in `.env.example`
 - [ ] Create Confluent Cloud cluster (free trial)
-- [ ] Configure topics: `robot.telemetry`, `human.telemetry`, `zone.context`, `coordination.decisions`
+- [ ] Create topics: `robot.telemetry`, `human.telemetry`, `zone.context`, `coordination.decisions`
 - [ ] Test full pipeline on Confluent Cloud
 - [ ] Capture Confluent Console screenshots (topics, throughput, metrics)
 - [ ] Document Confluent Cloud setup in README
-- [x] Add Kafka UI link in webapp header (configurable via VITE_CONFLUENT_URL)
 
 ### Environment Variables
 ```bash
@@ -169,9 +171,24 @@ KAFKA_SASL_MECHANISM=PLAIN
 ```
 
 ### Deliverables
+- [x] Code support for Confluent Cloud auth in all services
 - [ ] Working pipeline on Confluent Cloud
 - [ ] Screenshots of Confluent Console showing topics/throughput
 - [ ] README section on Confluent Cloud setup
+
+### Confluent Cloud Setup Steps
+1. Create Confluent Cloud account at https://confluent.cloud (free trial available)
+2. Create a Basic cluster in GCP (us-central1 recommended for Vertex AI proximity)
+3. Create API key for the cluster (Cluster → API keys → Create key)
+4. Create topics manually or let auto-create handle them:
+   - `robot.telemetry`
+   - `human.telemetry`
+   - `zone.context`
+   - `coordination.decisions`
+   - `anomaly.alerts` (for Flink)
+   - `anomaly.alerts.enriched` (for Flink)
+5. Update `.env` with cluster credentials
+6. For Flink: Enable Flink SQL in environment settings
 
 ---
 
@@ -318,11 +335,15 @@ coordination.decisions → Flink SQL (ML_DETECT_ANOMALIES) → anomaly.alerts
 - [x] Create anomaly detection pipeline with ML_DETECT_ANOMALIES
 - [x] Create Gemini enrichment pipeline with ML_PREDICT
 - [x] Document setup in `docs/flink-ai-pipeline.md`
-- [ ] Create Confluent Cloud Flink environment
-- [ ] Deploy SQL statements to Flink
+- [ ] Create Confluent Cloud Flink environment (requires Confluent Cloud cluster first)
+- [ ] Replace placeholders in SQL files (`${KAFKA_BROKERS}`, `${GCP_REGION}`, `${GCP_PROJECT_ID}`, `${GCP_SERVICE_ACCOUNT_KEY_JSON}`)
+- [ ] Deploy SQL statements to Flink via Confluent Cloud Console
+- [ ] Create `anomaly.alerts` and `anomaly.alerts.enriched` topics
 - [ ] Test anomaly detection end-to-end
 - [ ] Add backend endpoint to consume `anomaly.alerts.enriched`
 - [ ] Add "AI Alerts" panel to UI
+
+**Note:** The Flink SQL uses Confluent Cloud's managed ML functions (`ML_DETECT_ANOMALIES`, `ML_PREDICT`). These require Confluent Cloud Flink (not open-source Flink). The `ML_PREDICT` connection to Vertex AI requires a GCP service account with `aiplatform.endpoints.predict` permission.
 
 ### 6E. Congestion Scenario Demo
 
@@ -440,25 +461,24 @@ Stream decisions to BigQuery for real-time analytics.
 | 2. Stream Processor | ✅ Done | Risk scoring, decisions applied to simulator |
 | 3. Control Center UI | ✅ Done | Full UI, color-coded robots, collapsible panels |
 | 4. Gemini Copilot | ✅ Done | 11 tools, streaming, markdown, conversation history |
-| 5. Confluent Cloud | 🔄 Partial | Kafka UI link done, cluster setup pending |
+| 5. Confluent Cloud | 🔄 Partial | Code support done, cluster setup + testing pending |
 | 6A. Topology Diagram | ⏳ TODO | README + UI |
 | 6B. UI Data Flow | 🔄 Partial | Colors + legend + hover done, need decision animations |
-| 6C. Metrics Dashboard | ⏳ TODO | Streaming health panel |
-| 6D. Flink AI Pipeline | 🔄 Partial | SQL files created, needs deployment + UI |
+| 6C. Metrics Dashboard | ⏳ TODO | Streaming health panel (optional - use Confluent Console) |
+| 6D. Flink AI Pipeline | 🔄 Partial | SQL files + docs done, needs Confluent Cloud + deployment + UI |
 | 6E. Congestion Demo | ⏳ TODO | Stress test button |
 | 6F. BigQuery Sink | ⏳ TODO | If time permits |
 | 7. Cleanup | 🔄 Partial | Docker + dev mode done, needs README + license |
 | 8. Demo | ⏳ TODO | |
 
 **Remaining Priority Order:**
-1. **Confluent Cloud + Flink** - Must demonstrate real Confluent integration with Flink AI
+1. **Confluent Cloud Cluster** - Create cluster, topics, test pipeline (BLOCKER for Flink)
 2. **Flink AI Pipeline** - Deploy ML_DETECT_ANOMALIES + ML_PREDICT (key differentiator)
 3. **UI Alerts Panel** - Show Flink-detected anomalies with Gemini explanations
-4. **UI Data Flow** - Decision animations + colors (quick win, high visual impact)
-5. **Topology Diagram** - README + UI header
-6. **Congestion Demo** - Stress test for wow factor
-7. **README + License** - Judge requirements
-8. **Demo video** - 3-minute walkthrough
+4. **UI Data Flow** - Decision animations (quick win, high visual impact)
+5. **Congestion Demo** - Stress test for wow factor
+6. **README + License** - Judge requirements
+7. **Demo video** - 3-minute walkthrough
 
 ---
 
