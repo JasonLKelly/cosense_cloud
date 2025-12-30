@@ -184,43 +184,57 @@ KAFKA_SASL_MECHANISM=PLAIN
 Make the data flow **visible** to judges.
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                     STREAMING TOPOLOGY                          │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                 │
-│  ┌──────────────┐                                               │
-│  │  Simulator   │                                               │
-│  └──────┬───────┘                                               │
-│         │                                                       │
-│         ▼                                                       │
-│  ┌──────────────────────────────────────────────────┐          │
-│  │              CONFLUENT CLOUD                      │          │
-│  │  ┌────────────────┐ ┌────────────────┐           │          │
-│  │  │robot.telemetry │ │human.telemetry │           │          │
-│  │  └───────┬────────┘ └───────┬────────┘           │          │
-│  │          │                  │                     │          │
-│  │          └────────┬─────────┘                     │          │
-│  │                   ▼                               │          │
-│  │          ┌────────────────┐  ┌──────────────┐    │          │
-│  │          │ zone.context   │  │coordination. │    │          │
-│  │          └───────┬────────┘  │  decisions   │    │          │
-│  │                  │           └──────┬───────┘    │          │
-│  └──────────────────┼──────────────────┼────────────┘          │
-│                     │                  │                        │
-│                     ▼                  │                        │
-│            ┌────────────────┐          │                        │
-│            │Stream Processor│──────────┘                        │
-│            │ (Risk Scoring) │                                   │
-│            └────────────────┘                                   │
-│                     │                                           │
-│         ┌───────────┼───────────┐                               │
-│         ▼           ▼           ▼                               │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐                        │
-│  │    UI    │ │  Gemini  │ │ BigQuery │                        │
-│  │ (React)  │ │  Tools   │ │  Sink    │                        │
-│  └──────────┘ └──────────┘ └──────────┘                        │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                       STREAMING TOPOLOGY                             │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  ┌──────────────┐                                                    │
+│  │  Simulator   │                                                    │
+│  └──────┬───────┘                                                    │
+│         │                                                            │
+│         ▼                                                            │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │                    CONFLUENT CLOUD                              │ │
+│  │  ┌────────────────┐ ┌────────────────┐ ┌────────────────┐      │ │
+│  │  │robot.telemetry │ │human.telemetry │ │ zone.context   │      │ │
+│  │  └───────┬────────┘ └───────┬────────┘ └───────┬────────┘      │ │
+│  │          │                  │                   │                │ │
+│  │          └────────┬─────────┴───────────────────┘                │ │
+│  │                   ▼                                              │ │
+│  │          ┌────────────────┐                                      │ │
+│  │          │Stream Processor│                                      │ │
+│  │          │ (Risk Scoring) │                                      │ │
+│  │          └───────┬────────┘                                      │ │
+│  │                  │                                               │ │
+│  │                  ▼                                               │ │
+│  │          ┌────────────────┐                                      │ │
+│  │          │ coordination.  │                                      │ │
+│  │          │  decisions     │                                      │ │
+│  │          └───────┬────────┘                                      │ │
+│  │                  │                                               │ │
+│  │      ┌───────────┼───────────────────────────┐                   │ │
+│  │      │           │                           │                   │ │
+│  │      ▼           ▼                           ▼                   │ │
+│  │  ┌────────┐ ┌────────────────────────────────────┐               │ │
+│  │  │Backend │ │         FLINK SQL (AI)             │               │ │
+│  │  │ + UI   │ │  ┌─────────────────────────────┐   │               │ │
+│  │  └────────┘ │  │ ML_DETECT_ANOMALIES (ARIMA) │   │               │ │
+│  │             │  └──────────────┬──────────────┘   │               │ │
+│  │             │                 │                   │               │ │
+│  │             │                 ▼                   │  ┌──────────┐│ │
+│  │             │  ┌─────────────────────────────┐   │  │ Vertex   ││ │
+│  │             │  │ ML_PREDICT (Gemini explain) │◄──┼──│ AI/      ││ │
+│  │             │  └──────────────┬──────────────┘   │  │ Gemini   ││ │
+│  │             │                 │                   │  └──────────┘│ │
+│  │             └─────────────────┼───────────────────┘              │ │
+│  │                               ▼                                  │ │
+│  │                    ┌────────────────────┐                        │ │
+│  │                    │ anomaly.alerts.    │                        │ │
+│  │                    │ enriched           │──────► UI Alerts Panel │ │
+│  │                    └────────────────────┘                        │ │
+│  └──────────────────────────────────────────────────────────────────┘ │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Tasks
@@ -267,29 +281,48 @@ Real-time health panel showing Confluent pipeline performance.
 - [ ] Create collapsible "Stream Health" panel in UI (optional)
 - [x] Use Confluent Cloud Console for throughput/lag metrics
 
-### 6D. Proactive Gemini Agent (High Impact)
+### 6D. Flink AI Pipeline ⭐ HIGH IMPACT (Confluent Native)
 
-Transform Gemini from "answers questions" to "monitors stream and alerts proactively."
+**Goal:** Use Confluent Cloud's built-in AI features for anomaly detection + Gemini enrichment.
 
-```python
-# Gemini watches decision stream, alerts on patterns
-async def stream_monitor():
-    async for decision in kafka_stream("coordination.decisions"):
-        if should_alert(decision):  # e.g., repeated STOP, sensor disagreement
-            alert = await gemini.analyze(f"Investigate: {decision}")
-            push_alert_to_ui(alert)
+This approach uses **Confluent Flink SQL** instead of custom Python, demonstrating deep platform integration.
+
+```
+coordination.decisions → Flink SQL (ML_DETECT_ANOMALIES) → anomaly.alerts
+                                    ↓
+                         ML_PREDICT(Gemini via Vertex AI)
+                                    ↓
+                         anomaly.alerts.enriched → UI
 ```
 
-**Demo line:** "I didn't ask Gemini anything. It's watching the stream and just alerted me."
+**Demo line:** "Flink detected the anomaly using ARIMA. Gemini explained it. All in the stream."
+
+#### Anomaly Types Detected
+
+| Alert Type | Trigger | Flink Function |
+|------------|---------|----------------|
+| `DECISION_RATE_SPIKE` | Decision count exceeds ARIMA bounds | `ML_DETECT_ANOMALIES` |
+| `REPEATED_ROBOT_STOP` | Same robot stops 2+ times in 30s | Windowed aggregation |
+| `SENSOR_DISAGREEMENT_SPIKE` | 2+ sensor disagreements in 10s | Windowed aggregation |
+
+#### Flink SQL Files
+
+| File | Purpose |
+|------|---------|
+| `flink-sql/01-source-tables.sql` | Kafka source table definitions |
+| `flink-sql/02-anomaly-detection.sql` | ML_DETECT_ANOMALIES pipeline |
+| `flink-sql/03-gemini-enrichment.sql` | ML_PREDICT for AI explanations |
 
 ### Tasks
-- [ ] Add `/stream/monitor` endpoint that watches decisions
-- [ ] Implement alert conditions:
-  - Same robot stops 2+ times in 30 seconds
-  - SENSOR_DISAGREEMENT reason code
-  - Visibility degraded + multiple SLOW commands
-- [ ] Push proactive alerts to UI via SSE
-- [ ] Add "Gemini Alerts" panel to UI
+- [x] Create Flink SQL source tables for Kafka topics
+- [x] Create anomaly detection pipeline with ML_DETECT_ANOMALIES
+- [x] Create Gemini enrichment pipeline with ML_PREDICT
+- [x] Document setup in `docs/flink-ai-pipeline.md`
+- [ ] Create Confluent Cloud Flink environment
+- [ ] Deploy SQL statements to Flink
+- [ ] Test anomaly detection end-to-end
+- [ ] Add backend endpoint to consume `anomaly.alerts.enriched`
+- [ ] Add "AI Alerts" panel to UI
 
 ### 6E. Congestion Scenario Demo
 
@@ -394,6 +427,7 @@ Stream decisions to BigQuery for real-time analytics.
 ## Documentation
 
 - **[docs/kafka-topics.md](docs/kafka-topics.md)** — Kafka topics, message schemas, data flow diagram
+- **[docs/flink-ai-pipeline.md](docs/flink-ai-pipeline.md)** — Flink SQL anomaly detection + Gemini enrichment
 
 ---
 
@@ -410,17 +444,17 @@ Stream decisions to BigQuery for real-time analytics.
 | 6A. Topology Diagram | ⏳ TODO | README + UI |
 | 6B. UI Data Flow | 🔄 Partial | Colors + legend + hover done, need decision animations |
 | 6C. Metrics Dashboard | ⏳ TODO | Streaming health panel |
-| 6D. Proactive Gemini | ⏳ TODO | Stream monitoring + alerts |
+| 6D. Flink AI Pipeline | 🔄 Partial | SQL files created, needs deployment + UI |
 | 6E. Congestion Demo | ⏳ TODO | Stress test button |
 | 6F. BigQuery Sink | ⏳ TODO | If time permits |
 | 7. Cleanup | 🔄 Partial | Docker + dev mode done, needs README + license |
 | 8. Demo | ⏳ TODO | |
 
 **Remaining Priority Order:**
-1. **Confluent Cloud** - Must demonstrate real Confluent integration
-2. **UI Data Flow** - Decision animations + colors (quick win, high visual impact)
-3. **Streaming Metrics** - Show throughput, latency (proves it's real-time)
-4. **Proactive Gemini** - "AI on data in motion" differentiator
+1. **Confluent Cloud + Flink** - Must demonstrate real Confluent integration with Flink AI
+2. **Flink AI Pipeline** - Deploy ML_DETECT_ANOMALIES + ML_PREDICT (key differentiator)
+3. **UI Alerts Panel** - Show Flink-detected anomalies with Gemini explanations
+4. **UI Data Flow** - Decision animations + colors (quick win, high visual impact)
 5. **Topology Diagram** - README + UI header
 6. **Congestion Demo** - Stress test for wow factor
 7. **README + License** - Judge requirements

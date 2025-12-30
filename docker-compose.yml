@@ -64,28 +64,16 @@ services:
     hostname: simulator
     container_name: cosense_simulator
     env_file: .env
-    environment:
-      KAFKA_BROKERS: broker:29092
     ports:
       - "8000:8000"
     volumes:
       - ./maps:/app/maps:ro
-    depends_on:
-      broker:
-        condition: service_healthy
 
   stream-processor:
     build: ./stream-processor
     hostname: stream-processor
     container_name: cosense_stream_processor
     env_file: .env
-    environment:
-      KAFKA_BROKERS: broker:29092
-    depends_on:
-      broker:
-        condition: service_healthy
-      simulator:
-        condition: service_started
 
   backend:
     build: ./backend
@@ -93,7 +81,6 @@ services:
     container_name: cosense_backend
     env_file: .env
     environment:
-      KAFKA_BROKERS: broker:29092
       SIMULATOR_URL: http://simulator:8000
       GOOGLE_APPLICATION_CREDENTIALS: /gcp/application_default_credentials.json
     ports:
@@ -101,11 +88,6 @@ services:
     volumes:
       - ./maps:/app/maps:ro
       - ~/.config/gcloud/application_default_credentials.json:/gcp/application_default_credentials.json:ro
-    depends_on:
-      broker:
-        condition: service_healthy
-      simulator:
-        condition: service_started
 
   control-center-webapp:
     build: ./control-center-webapp
