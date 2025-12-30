@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Robot, API_URL, CONFLUENT_URL } from './types'
+import { Robot, AnomalyAlert, API_URL, CONFLUENT_URL } from './types'
 import { useSimState } from './hooks/useSimState'
 import { useGemini } from './hooks/useGemini'
 import { useMap } from './hooks/useMap'
@@ -12,10 +12,12 @@ import './styles.css'
 
 export default function App() {
   const [pollDecisions, setPollDecisions] = useState(true)
+  const [pollAnomalies, setPollAnomalies] = useState(true)
 
   const {
     state,
     decisions,
+    anomalies,
     error: simError,
     startSim,
     stopSim,
@@ -23,7 +25,7 @@ export default function App() {
     toggleConnectivity,
     stopRobot,
     startRobot,
-  } = useSimState({ pollDecisions })
+  } = useSimState({ pollDecisions, pollAnomalies })
 
   const {
     ask,
@@ -81,6 +83,11 @@ export default function App() {
     })
   }
 
+  const handleExplainAlert = (alert: AnomalyAlert) => {
+    const prompt = `Explain this ${alert.severity} severity ${alert.alert_type} alert in zone ${alert.zone_id}${alert.robot_id ? ` involving ${alert.robot_id}` : ''}. Context: "${alert.context}". What might be causing this and what should the operator do?`
+    ask(prompt)
+  }
+
   return (
     <div className="app">
       {/* Header */}
@@ -132,11 +139,14 @@ export default function App() {
           zone={state?.zone || null}
           robots={state?.robots || []}
           decisions={decisions}
+          anomalies={anomalies}
           onToggleVisibility={toggleVisibility}
           onToggleConnectivity={toggleConnectivity}
           onDecisionsExpandedChange={setPollDecisions}
+          onAnomaliesExpandedChange={setPollAnomalies}
           onRobotClick={handleRobotClick}
           onRobotHover={setHoveredRobotId}
+          onExplainAlert={handleExplainAlert}
         />
       </div>
 

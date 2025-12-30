@@ -1,34 +1,60 @@
 import { useState } from 'react'
-import { Zone, Decision, Robot } from '../types'
+import { Zone, Decision, Robot, AnomalyAlert } from '../types'
 
 interface MetricsPanelProps {
   zone: Zone | null
   robots: Robot[]
   decisions: Decision[]
+  anomalies: AnomalyAlert[]
   onToggleVisibility: (visibility: 'normal' | 'degraded' | 'poor') => void
   onToggleConnectivity: (connectivity: 'normal' | 'degraded' | 'offline') => void
   onDecisionsExpandedChange: (expanded: boolean) => void
+  onAnomaliesExpandedChange: (expanded: boolean) => void
   onRobotClick: (robot: Robot) => void
   onRobotHover: (robotId: string | null) => void
+  onExplainAlert?: (alert: AnomalyAlert) => void
 }
 
 export function MetricsPanel({
   zone,
   robots,
   decisions,
+  anomalies,
   onToggleVisibility,
   onToggleConnectivity,
   onDecisionsExpandedChange,
+  onAnomaliesExpandedChange,
   onRobotClick,
   onRobotHover,
+  onExplainAlert,
 }: MetricsPanelProps) {
   const [decisionsExpanded, setDecisionsExpanded] = useState(true)
   const [robotsExpanded, setRobotsExpanded] = useState(true)
+  const [anomaliesExpanded, setAnomaliesExpanded] = useState(true)
 
   const handleDecisionsToggle = () => {
     const newExpanded = !decisionsExpanded
     setDecisionsExpanded(newExpanded)
     onDecisionsExpandedChange(newExpanded)
+  }
+
+  const handleAnomaliesToggle = () => {
+    const newExpanded = !anomaliesExpanded
+    setAnomaliesExpanded(newExpanded)
+    onAnomaliesExpandedChange(newExpanded)
+  }
+
+  const formatAlertType = (type: string): string => {
+    switch (type) {
+      case 'DECISION_RATE_SPIKE':
+        return 'Rate Spike'
+      case 'REPEATED_ROBOT_STOP':
+        return 'Repeated Stop'
+      case 'SENSOR_DISAGREEMENT_SPIKE':
+        return 'Sensor Issue'
+      default:
+        return type
+    }
   }
 
   const getRobotStateClass = (robot: Robot): string => {
@@ -176,6 +202,56 @@ export function MetricsPanel({
                   <span className="decision-item-action">{d.action}</span>
                 </div>
                 <div className="decision-item-summary">{d.summary}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* AI Alerts - Flink-detected anomalies */}
+      <div className="drawer-section">
+        <h4
+          className="drawer-title collapsible"
+          onClick={handleAnomaliesToggle}
+        >
+          <span>AI Alerts</span>
+          {anomalies.length > 0 && (
+            <span className="alert-count">{anomalies.length}</span>
+          )}
+          <span className="collapse-icon">{anomaliesExpanded ? '▼' : '▶'}</span>
+        </h4>
+        {anomaliesExpanded && (
+          <div className="alert-list">
+            {anomalies.length === 0 && (
+              <div className="text-muted text-small">No alerts - system normal</div>
+            )}
+            {anomalies.slice().reverse().map((a) => (
+              <div
+                key={a.alert_id}
+                className={`alert-item alert-${a.severity.toLowerCase()}`}
+              >
+                <div className="alert-item-header">
+                  <span className={`alert-severity ${a.severity.toLowerCase()}`}>
+                    {a.severity}
+                  </span>
+                  <span className="alert-type">{formatAlertType(a.alert_type)}</span>
+                </div>
+                {a.robot_id && (
+                  <div className="alert-robot">{a.robot_id}</div>
+                )}
+                <div className="alert-context">{a.context}</div>
+                <div className="alert-explanation">{a.ai_explanation}</div>
+                {onExplainAlert && (
+                  <button
+                    className="btn-explain"
+                    onClick={() => onExplainAlert(a)}
+                  >
+                    <svg className="gemini-icon" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5z"/>
+                    </svg>
+                    Explain with Gemini
+                  </button>
+                )}
               </div>
             ))}
           </div>

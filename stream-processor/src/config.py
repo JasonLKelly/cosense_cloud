@@ -21,7 +21,10 @@ class Settings(BaseSettings):
     schema_registry_api_key: str = ""
     schema_registry_api_secret: str = ""
 
-    # Topics
+    # Topic prefix for namespacing (e.g., "local", "prod")
+    kafka_topic_prefix: str = ""
+
+    # Topics (base names - use topic() method for prefixed names)
     robot_telemetry_topic: str = "robot.telemetry"
     human_telemetry_topic: str = "human.telemetry"
     zone_context_topic: str = "zone.context"
@@ -44,6 +47,19 @@ class Settings(BaseSettings):
 
     class Config:
         env_prefix = ""
+
+    def topic(self, name: str) -> str:
+        """Get prefixed topic name."""
+        if self.kafka_topic_prefix:
+            return f"{self.kafka_topic_prefix}.{name}"
+        return name
+
+    @property
+    def prefixed_consumer_group(self) -> str:
+        """Get consumer group with prefix."""
+        if self.kafka_topic_prefix:
+            return f"{self.kafka_topic_prefix}-{self.consumer_group}"
+        return self.consumer_group
 
     def get_kafka_config(self) -> dict:
         """Get Kafka producer/consumer config dict."""

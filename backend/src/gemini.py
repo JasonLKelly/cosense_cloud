@@ -56,6 +56,7 @@ class ToolContext:
     robot_states: dict[str, list[dict]] = field(default_factory=dict)
     zone_states: dict[str, dict] = field(default_factory=dict)
     current_state: dict[str, dict] = field(default_factory=dict)
+    anomaly_alerts: list[dict] = field(default_factory=list)
     simulator_url: str = "http://simulator:8000"
 
 
@@ -229,6 +230,58 @@ def get_zone_context(zone_id: str) -> dict:
     }
 
 
+def get_anomalies(
+    robot_id: str | None = None,
+    severity: str | None = None,
+    alert_type: str | None = None,
+    limit: int = 10
+) -> dict:
+    """Get recent anomaly alerts detected by the Flink AI pipeline.
+
+    Anomalies are detected using ML_DETECT_ANOMALIES (ARIMA) and enriched
+    with AI explanations via ML_PREDICT (Gemini).
+
+    Args:
+        robot_id: Filter by robot (optional)
+        severity: Filter by severity: HIGH, MEDIUM (optional)
+        alert_type: Filter by type: DECISION_RATE_SPIKE, REPEATED_ROBOT_STOP, SENSOR_DISAGREEMENT_SPIKE (optional)
+        limit: Maximum number of alerts to return (default 10)
+
+    Returns:
+        List of recent anomaly alerts with AI explanations
+    """
+    anomalies = _ctx.anomaly_alerts
+
+    # Apply filters
+    if robot_id:
+        anomalies = [a for a in anomalies if a.get("robot_id") == robot_id]
+    if severity:
+        anomalies = [a for a in anomalies if a.get("severity") == severity]
+    if alert_type:
+        anomalies = [a for a in anomalies if a.get("alert_type") == alert_type]
+
+    # Take most recent
+    recent = anomalies[-limit:] if len(anomalies) > limit else anomalies
+
+    return {
+        "count": len(recent),
+        "filters": {"robot_id": robot_id, "severity": severity, "alert_type": alert_type},
+        "anomalies": [
+            {
+                "alert_id": a.get("alert_id"),
+                "alert_type": a.get("alert_type"),
+                "severity": a.get("severity"),
+                "robot_id": a.get("robot_id"),
+                "zone_id": a.get("zone_id"),
+                "context": a.get("context"),
+                "ai_explanation": a.get("ai_explanation"),
+                "detected_at": a.get("detected_at"),
+            }
+            for a in recent
+        ],
+    }
+
+
 def get_scenario_status() -> dict:
     """Get current simulation state and configuration.
 
@@ -397,6 +450,7 @@ TOOLS = [
     get_robot_state,
     get_nearby_entities,
     get_decisions,
+    get_anomalies,
     get_zone_context,
     get_scenario_status,
     analyze_patterns,
@@ -422,6 +476,7 @@ QUERY TOOLS:
 - get_robot_state: Get a robot's position, velocity, sensors, and trajectory
 - get_nearby_entities: Find humans and robots near a specific robot
 - get_decisions: Get recent coordination decisions (STOP, SLOW, REROUTE, CONTINUE)
+- get_anomalies: Get AI-detected anomalies from Flink pipeline (spikes, patterns)
 - get_zone_context: Get zone conditions (visibility, congestion, connectivity)
 - get_scenario_status: Get simulation status (running, entity counts, toggles)
 - analyze_patterns: Analyze decision patterns and trends
@@ -435,6 +490,11 @@ ROBOT CONTROL TOOLS:
 - stop_robot(robot_id): Stop a specific robot (e.g., "stop robot-1")
 - start_robot(robot_id): Resume a specific robot (e.g., "start robot-1")
 
+ANOMALY TYPES:
+- DECISION_RATE_SPIKE: Unusual increase in safety decisions (detected by ARIMA)
+- REPEATED_ROBOT_STOP: Same robot stopped multiple times in 30s
+- SENSOR_DISAGREEMENT_SPIKE: Ultrasonic/BLE sensors conflicting
+
 RULES:
 1. Use query tools to gather data before answering questions
 2. Use control tools when the operator asks to start, stop, or reset
@@ -443,10 +503,12 @@ RULES:
 5. Cite specific values (distances, speeds, scores) as evidence
 6. If data is insufficient, say so clearly
 7. Be concise but complete
+8. When asked about anomalies or alerts, use get_anomalies
 
 When answering questions:
 - Explain WHY things happened by citing reason_codes and sensor data
 - For patterns, use analyze_patterns and look at distributions
+- For anomalies, include the AI explanation from the alert
 - Always ground your answer in the data you retrieved"""
 
 
@@ -499,6 +561,7 @@ async def ask_copilot(
     robot_states: dict[str, list[dict]],
     zone_states: dict[str, dict],
     current_state: dict[str, dict],
+    anomaly_alerts: list[dict] | None = None,
 ) -> OperatorAnswer:
     """Ask the Gemini copilot a question.
 
@@ -509,6 +572,7 @@ async def ask_copilot(
         robot_states: Historical robot states by robot_id
         zone_states: Current zone states by zone_id
         current_state: Current state of all entities
+        anomaly_alerts: Recent anomaly alerts from Flink AI pipeline
 
     Returns:
         Structured answer with evidence and tool call log
@@ -527,6 +591,7 @@ async def ask_copilot(
         robot_states=robot_states,
         zone_states=zone_states,
         current_state=current_state,
+        anomaly_alerts=anomaly_alerts or [],
         simulator_url=settings.simulator_url,
     ))
 
@@ -600,6 +665,7 @@ async def ask_copilot_stream(
     robot_states: dict[str, list[dict]],
     zone_states: dict[str, dict],
     current_state: dict[str, dict],
+    anomaly_alerts: list[dict] | None = None,
 ) -> AsyncIterator[str]:
     """Stream responses from Gemini copilot.
 
@@ -620,6 +686,7 @@ async def ask_copilot_stream(
         robot_states=robot_states,
         zone_states=zone_states,
         current_state=current_state,
+        anomaly_alerts=anomaly_alerts or [],
         simulator_url=settings.simulator_url,
     ))
 

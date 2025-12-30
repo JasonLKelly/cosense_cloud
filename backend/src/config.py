@@ -21,10 +21,14 @@ class Settings(BaseSettings):
     schema_registry_api_key: str = ""
     schema_registry_api_secret: str = ""
 
-    # Topics to consume
+    # Topic prefix for namespacing (e.g., "local", "prod")
+    kafka_topic_prefix: str = ""
+
+    # Topics to consume (base names)
     coordination_state_topic: str = "coordination.state"
     coordination_decisions_topic: str = "coordination.decisions"
     zone_context_topic: str = "zone.context"
+    anomaly_alerts_topic: str = "anomaly.alerts.enriched"
 
     # Simulator service (for forwarding commands)
     simulator_url: str = "http://simulator:8000"
@@ -41,9 +45,23 @@ class Settings(BaseSettings):
     # State buffer
     max_decisions_buffer: int = 100
     max_state_buffer: int = 50
+    max_anomalies_buffer: int = 50
 
     class Config:
         env_prefix = ""
+
+    def topic(self, name: str) -> str:
+        """Get prefixed topic name."""
+        if self.kafka_topic_prefix:
+            return f"{self.kafka_topic_prefix}.{name}"
+        return name
+
+    @property
+    def prefixed_consumer_group(self) -> str:
+        """Get consumer group with prefix."""
+        if self.kafka_topic_prefix:
+            return f"{self.kafka_topic_prefix}-{self.consumer_group}"
+        return self.consumer_group
 
     def get_kafka_config(self) -> dict:
         """Get Kafka producer/consumer config dict."""

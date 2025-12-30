@@ -327,7 +327,7 @@ class World:
                 "destination": robot.destination_waypoint,
             }
             self.producer.produce(
-                "robot.telemetry",
+                settings.topic("robot.telemetry"),
                 key=robot.robot_id,
                 value=json.dumps(event),
             )
@@ -349,7 +349,7 @@ class World:
                 "position_confidence": round(confidence, 2),
             }
             self.producer.produce(
-                "human.telemetry",
+                settings.topic("human.telemetry"),
                 key=human.human_id,
                 value=json.dumps(event),
             )
@@ -365,7 +365,7 @@ class World:
             "connectivity": self.zone.connectivity,
         }
         self.producer.produce(
-            "zone.context",
+            settings.topic("zone.context"),
             key=self.zone.zone_id,
             value=json.dumps(zone_event),
         )

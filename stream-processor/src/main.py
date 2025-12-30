@@ -247,7 +247,7 @@ def main():
     # Build QuixStreams Application with optional SASL config
     app_kwargs = {
         "broker_address": settings.kafka_brokers,
-        "consumer_group": settings.consumer_group,
+        "consumer_group": settings.prefixed_consumer_group,
         "auto_offset_reset": "latest",
     }
 
@@ -270,14 +270,14 @@ def main():
     if settings.kafka_api_key and settings.kafka_api_secret:
         topic_config = TopicConfig(num_partitions=1, replication_factor=3)
 
-    # Input topics
-    robot_topic = app.topic(settings.robot_telemetry_topic, value_deserializer="json", config=topic_config)
-    human_topic = app.topic(settings.human_telemetry_topic, value_deserializer="json", config=topic_config)
-    zone_topic = app.topic(settings.zone_context_topic, value_deserializer="json", config=topic_config)
+    # Input topics (with prefix support)
+    robot_topic = app.topic(settings.topic(settings.robot_telemetry_topic), value_deserializer="json", config=topic_config)
+    human_topic = app.topic(settings.topic(settings.human_telemetry_topic), value_deserializer="json", config=topic_config)
+    zone_topic = app.topic(settings.topic(settings.zone_context_topic), value_deserializer="json", config=topic_config)
 
-    # Output topics
-    decisions_topic = app.topic(settings.coordination_decisions_topic, value_serializer="json", config=topic_config)
-    state_topic = app.topic(settings.coordination_state_topic, value_serializer="json", config=topic_config)
+    # Output topics (with prefix support)
+    decisions_topic = app.topic(settings.topic(settings.coordination_decisions_topic), value_serializer="json", config=topic_config)
+    state_topic = app.topic(settings.topic(settings.coordination_state_topic), value_serializer="json", config=topic_config)
 
     # Process robot telemetry -> state + decisions
     sdf_robots = app.dataframe(robot_topic)

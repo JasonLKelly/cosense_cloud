@@ -51,6 +51,22 @@ export interface Decision {
   timestamp: number
 }
 
+export interface AnomalyAlert {
+  alert_id: string
+  alert_type: 'DECISION_RATE_SPIKE' | 'REPEATED_ROBOT_STOP' | 'SENSOR_DISAGREEMENT_SPIKE'
+  detected_at: number
+  zone_id: string
+  robot_id: string | null
+  metric_name: string
+  actual_value: number
+  forecast_value: number
+  lower_bound: number
+  upper_bound: number
+  severity: 'HIGH' | 'MEDIUM'
+  context: string
+  ai_explanation: string
+}
+
 export interface ToolCallLog {
   tool: string
   params: Record<string, unknown>
