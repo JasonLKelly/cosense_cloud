@@ -31,9 +31,9 @@ cd ..
 
 # Deploy to Firebase (from project root where firebase.json is)
 echo "Deploying to Firebase Hosting..."
-~/.local/bin/firebase deploy --only hosting
+~/.local/bin/firebase deploy --only hosting:cosense-cloud
 
 echo ""
 echo "=== Deploy Complete ==="
-echo "  Frontend: https://${PROJECT_ID}.web.app"
+echo "  Frontend: https://cosense-cloud.web.app"
 echo "  Backend:  $BACKEND_URL"

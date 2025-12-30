@@ -34,24 +34,42 @@ echo ""
 : "${KAFKA_API_SECRET:?ERROR: Set KAFKA_API_SECRET in .env}"
 
 # ============================================================
-# Step 1: Build services
+# Step 1: Build services (parallel)
 # ============================================================
 if [[ "$SKIP_BUILD" == "false" ]]; then
-  echo "[1/4] Building services..."
+  echo "[1/4] Building services in parallel..."
 
   # Copy maps into backend/ for Docker build context
   cp -r maps backend/
 
+  # Build all services in parallel
+  pids=()
   for svc in simulator stream-processor backend; do
-    echo "  Building $svc..."
+    echo "  Starting build: $svc"
     gcloud builds submit "./$svc" \
       --tag "${REGISTRY}/${svc}:latest" \
       --project "$PROJECT_ID" \
-      --quiet
+      --quiet &
+    pids+=($!)
+  done
+
+  # Wait for all builds to complete
+  echo "  Waiting for builds to complete..."
+  failed=0
+  for pid in "${pids[@]}"; do
+    if ! wait "$pid"; then
+      failed=1
+    fi
   done
 
   # Clean up
   rm -rf backend/maps
+
+  if [[ $failed -ne 0 ]]; then
+    echo "ERROR: One or more builds failed"
+    exit 1
+  fi
+  echo "  All builds completed"
 else
   echo "[1/4] Skipping build (--skip-build)"
 fi
@@ -73,6 +91,7 @@ gcloud run deploy simulator \
   --set-env-vars="KAFKA_API_SECRET=${KAFKA_API_SECRET}" \
   --set-env-vars="KAFKA_SECURITY_PROTOCOL=${KAFKA_SECURITY_PROTOCOL:-SASL_SSL}" \
   --set-env-vars="KAFKA_SASL_MECHANISM=${KAFKA_SASL_MECHANISM:-PLAIN}" \
+  --set-env-vars="KAFKA_TOPIC_PREFIX=${KAFKA_TOPIC_PREFIX:-prod}" \
   --set-env-vars="ROBOT_COUNT=${ROBOT_COUNT:-2}" \
   --set-env-vars="HUMAN_COUNT=${HUMAN_COUNT:-2}" \
   --set-env-vars="TICK_RATE_HZ=${TICK_RATE_HZ:-10}" \
@@ -99,6 +118,7 @@ gcloud run deploy stream-processor \
   --set-env-vars="KAFKA_API_SECRET=${KAFKA_API_SECRET}" \
   --set-env-vars="KAFKA_SECURITY_PROTOCOL=${KAFKA_SECURITY_PROTOCOL:-SASL_SSL}" \
   --set-env-vars="KAFKA_SASL_MECHANISM=${KAFKA_SASL_MECHANISM:-PLAIN}" \
+  --set-env-vars="KAFKA_TOPIC_PREFIX=${KAFKA_TOPIC_PREFIX:-prod}" \
   --set-env-vars="SIMULATOR_URL=${SIMULATOR_URL}" \
   --quiet
 
@@ -121,6 +141,7 @@ gcloud run deploy backend \
   --set-env-vars="KAFKA_API_SECRET=${KAFKA_API_SECRET}" \
   --set-env-vars="KAFKA_SECURITY_PROTOCOL=${KAFKA_SECURITY_PROTOCOL:-SASL_SSL}" \
   --set-env-vars="KAFKA_SASL_MECHANISM=${KAFKA_SASL_MECHANISM:-PLAIN}" \
+  --set-env-vars="KAFKA_TOPIC_PREFIX=${KAFKA_TOPIC_PREFIX:-prod}" \
   --set-env-vars="SIMULATOR_URL=${SIMULATOR_URL}" \
   --set-env-vars="GOOGLE_CLOUD_PROJECT=${PROJECT_ID}" \
   --set-env-vars="GOOGLE_CLOUD_LOCATION=${REGION}" \

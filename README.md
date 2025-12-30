@@ -1,6 +1,8 @@
 # CoSense Cloud
 ### Real-Time Human–Robot Coordination with Streaming AI and Edge-Aware Reasoning
 
+> **Live Demo:** [cosense-cloud.web.app](https://cosense-cloud.web.app)
+
 CoSense Cloud is an open-source, cloud-native demonstration of **real-time human–robot coordination** in warehouse environments. It shows how streaming telemetry, edge-aware decision logic, and **LLM-based operator copilots** can work together to produce systems that are fast, explainable, and resilient.
 
 This project was built for the **Google AI Partner Catalyst** and is designed to be:
@@ -176,7 +178,16 @@ gcloud auth login
 ./deploy/teardown.sh
 ```
 
-The deployment script:
-1. Builds all container images with Cloud Build
-2. Deploys simulator, stream-processor, backend, and frontend to Cloud Run
-3. Automatically wires up service URLs (backend URL injected into frontend at build time)
+The deployment scripts:
+1. `cloud-run.sh` - Builds images in parallel via Cloud Build, deploys backend services to Cloud Run
+2. `firebase-hosting.sh` - Builds frontend with backend URL, deploys to Firebase Hosting
+
+Live URLs after deployment:
+- **Frontend:** https://cosense-cloud.web.app
+- **Backend API:** https://backend-xxxxx.run.app (auto-generated)
+
+---
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.

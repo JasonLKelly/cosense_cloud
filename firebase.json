@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "cosense-cloud",
     "public": "control-center-webapp/dist",
     "ignore": [
       "firebase.json",
