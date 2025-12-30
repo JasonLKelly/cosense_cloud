@@ -15,5 +15,9 @@ RUN pip install --no-cache-dir .
 # Copy source
 COPY src/ src/
 
-# Run the API gateway
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8080"]
+# Copy maps (copied into backend/ by build script)
+COPY maps/ maps/
+
+# Run the API gateway (PORT env var set by Cloud Run, default 8080 for local)
+ENV PORT=8080
+CMD uvicorn src.main:app --host 0.0.0.0 --port $PORT

@@ -394,6 +394,22 @@ Stream decisions to BigQuery for real-time analytics.
 - [x] Same containers deployable to Google Cloud Run with no code changes
 - [x] Environment-based configuration (3 Confluent modes supported)
 
+### Cloud Run Performance (Future)
+
+Current /state endpoint latency: ~310ms. Potential optimizations if needed:
+
+| Optimization | Expected Impact | Effort |
+|--------------|-----------------|--------|
+| HTTP/2 + keepalive in frontend | Reduce TLS handshake overhead | Low |
+| `--cpu-boost` flag | Faster cold start CPU | Low |
+| `--no-cpu-throttling` | Always-on CPU (no throttling between requests) | Low |
+| `--session-affinity` | Route repeat clients to same instance | Low |
+| Move to same region as users | Reduce network RTT | Medium |
+| gRPC instead of REST | More efficient serialization | High |
+| WebSocket for state updates | Eliminate polling overhead | Medium |
+
+For hackathon demo, current latency is acceptable.
+
 ---
 
 ## Phase 8 — Demo & Submission ⏳ TODO

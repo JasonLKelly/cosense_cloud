@@ -2,6 +2,10 @@ FROM node:20-slim AS builder
 
 WORKDIR /app
 
+# Accept build-time env vars for Vite
+ARG VITE_API_URL
+ENV VITE_API_URL=${VITE_API_URL}
+
 COPY package.json ./
 RUN npm install
 
@@ -17,6 +21,8 @@ RUN npm install -g serve
 
 COPY --from=builder /app/dist ./dist
 
-EXPOSE 3000
+# PORT env var set by Cloud Run, default 3000 for local
+ENV PORT=3000
+EXPOSE $PORT
 
-CMD ["serve", "-s", "dist", "-l", "3000"]
+CMD serve -s dist -l $PORT
