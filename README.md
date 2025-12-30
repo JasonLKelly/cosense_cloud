@@ -134,8 +134,49 @@ Responses include:
 
 ## Reproducibility
 
-### One-Command Startup
+### Local Development
 
 ```bash
 cp .env.example .env
+# Edit .env: uncomment KAFKA_BROKERS=broker:29092 for local Kafka
 docker compose up --build
+```
+
+Access points:
+- Control Center UI: http://localhost:3000
+- Backend API: http://localhost:8080
+- Simulator API: http://localhost:8000
+- Kafka Control Center: http://localhost:9021
+
+### Cloud Run Deployment
+
+Prerequisites:
+- [gcloud CLI](https://cloud.google.com/sdk/docs/install) installed and authenticated
+- A GCP project with billing enabled
+- A Confluent Cloud cluster with API credentials
+
+```bash
+# 1. Configure environment
+cp .env.example .env
+# Edit .env with your values:
+#   - GOOGLE_CLOUD_PROJECT=your-project-id
+#   - KAFKA_BROKERS=pkc-xxxxx.confluent.cloud:9092
+#   - KAFKA_API_KEY / KAFKA_API_SECRET
+
+# 2. Authenticate with GCP
+gcloud auth login
+
+# 3. One-time setup (enables APIs, creates Artifact Registry)
+./deploy/setup-gcp.sh
+
+# 4. Deploy all services
+./deploy/cloud-run.sh
+
+# 5. Teardown when done (deletes Cloud Run services)
+./deploy/teardown.sh
+```
+
+The deployment script:
+1. Builds all container images with Cloud Build
+2. Deploys simulator, stream-processor, backend, and frontend to Cloud Run
+3. Automatically wires up service URLs (backend URL injected into frontend at build time)
