@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Robot, API_URL, CONFLUENT_URL } from './types'
+import { Robot, AnomalyAlert, API_URL, CONFLUENT_URL } from './types'
 import { useSimState } from './hooks/useSimState'
 import { useGemini } from './hooks/useGemini'
 import { useMap } from './hooks/useMap'
@@ -83,6 +83,11 @@ export default function App() {
     })
   }
 
+  const handleExplainAlert = (alert: AnomalyAlert) => {
+    const prompt = `Explain this ${alert.severity} severity ${alert.alert_type} alert in zone ${alert.zone_id}${alert.robot_id ? ` involving ${alert.robot_id}` : ''}. Context: "${alert.context}". What might be causing this and what should the operator do?`
+    ask(prompt)
+  }
+
   return (
     <div className="app">
       {/* Header */}
@@ -141,6 +146,7 @@ export default function App() {
           onAnomaliesExpandedChange={setPollAnomalies}
           onRobotClick={handleRobotClick}
           onRobotHover={setHoveredRobotId}
+          onExplainAlert={handleExplainAlert}
         />
       </div>
 

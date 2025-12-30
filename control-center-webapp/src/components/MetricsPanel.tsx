@@ -12,6 +12,7 @@ interface MetricsPanelProps {
   onAnomaliesExpandedChange: (expanded: boolean) => void
   onRobotClick: (robot: Robot) => void
   onRobotHover: (robotId: string | null) => void
+  onExplainAlert?: (alert: AnomalyAlert) => void
 }
 
 export function MetricsPanel({
@@ -25,6 +26,7 @@ export function MetricsPanel({
   onAnomaliesExpandedChange,
   onRobotClick,
   onRobotHover,
+  onExplainAlert,
 }: MetricsPanelProps) {
   const [decisionsExpanded, setDecisionsExpanded] = useState(true)
   const [robotsExpanded, setRobotsExpanded] = useState(true)
@@ -239,6 +241,17 @@ export function MetricsPanel({
                 )}
                 <div className="alert-context">{a.context}</div>
                 <div className="alert-explanation">{a.ai_explanation}</div>
+                {onExplainAlert && (
+                  <button
+                    className="btn-explain"
+                    onClick={() => onExplainAlert(a)}
+                  >
+                    <svg className="gemini-icon" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5z"/>
+                    </svg>
+                    Explain with Gemini
+                  </button>
+                )}
               </div>
             ))}
           </div>

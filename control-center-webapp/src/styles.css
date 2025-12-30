@@ -782,6 +782,34 @@ body {
   border-radius: 3px;
 }
 
+.btn-explain {
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: transparent;
+  border: 1px solid var(--robot-continue);
+  color: var(--robot-continue);
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btn-explain:hover {
+  background: var(--robot-continue);
+  color: var(--bg-primary);
+}
+
+.gemini-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
 /* ============================================
    Zone Info
    ============================================ */
