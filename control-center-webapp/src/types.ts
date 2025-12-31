@@ -167,3 +167,6 @@ export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
 
 // Confluent UI URL - local Control Center or Confluent Cloud
 export const CONFLUENT_URL = import.meta.env.VITE_CONFLUENT_URL || 'http://localhost:9021'
+
+// Poll interval in ms (default 500ms for Cloud Run, 250ms for local)
+export const POLL_INTERVAL = Number(import.meta.env.VITE_POLL_INTERVAL) || 500

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { SimState, Decision, AnomalyAlert, API_URL } from '../types'
+import { SimState, Decision, AnomalyAlert, API_URL, POLL_INTERVAL } from '../types'
 
 interface UseSimStateOptions {
   pollInterval?: number
@@ -8,7 +8,7 @@ interface UseSimStateOptions {
 }
 
 export function useSimState(options: UseSimStateOptions = {}) {
-  const { pollInterval = 250, pollDecisions = true, pollAnomalies = true } = options
+  const { pollInterval = POLL_INTERVAL, pollDecisions = true, pollAnomalies = true } = options
   const [state, setState] = useState<SimState | null>(null)
   const [decisions, setDecisions] = useState<Decision[]>([])
   const [anomalies, setAnomalies] = useState<AnomalyAlert[]>([])

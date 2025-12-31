@@ -1,6 +1,8 @@
 # CoSense Cloud
 ### Real-Time Human–Robot Coordination with Streaming AI and Edge-Aware Reasoning
 
+> **Live Demo:** [cosense-cloud.web.app](https://cosense-cloud.web.app)
+
 CoSense Cloud is an open-source, cloud-native demonstration of **real-time human–robot coordination** in warehouse environments. It shows how streaming telemetry, edge-aware decision logic, and **LLM-based operator copilots** can work together to produce systems that are fast, explainable, and resilient.
 
 This project was built for the **Google AI Partner Catalyst** and is designed to be:
@@ -134,8 +136,58 @@ Responses include:
 
 ## Reproducibility
 
-### One-Command Startup
+### Local Development
 
 ```bash
 cp .env.example .env
+# Edit .env: uncomment KAFKA_BROKERS=broker:29092 for local Kafka
 docker compose up --build
+```
+
+Access points:
+- Control Center UI: http://localhost:3000
+- Backend API: http://localhost:8080
+- Simulator API: http://localhost:8000
+- Kafka Control Center: http://localhost:9021
+
+### Cloud Run Deployment
+
+Prerequisites:
+- [gcloud CLI](https://cloud.google.com/sdk/docs/install) installed and authenticated
+- A GCP project with billing enabled
+- A Confluent Cloud cluster with API credentials
+
+```bash
+# 1. Configure environment
+cp .env.example .env
+# Edit .env with your values:
+#   - GOOGLE_CLOUD_PROJECT=your-project-id
+#   - KAFKA_BROKERS=pkc-xxxxx.confluent.cloud:9092
+#   - KAFKA_API_KEY / KAFKA_API_SECRET
+
+# 2. Authenticate with GCP
+gcloud auth login
+
+# 3. One-time setup (enables APIs, creates Artifact Registry)
+./deploy/setup-gcp.sh
+
+# 4. Deploy all services
+./deploy/cloud-run.sh
+
+# 5. Teardown when done (deletes Cloud Run services)
+./deploy/teardown.sh
+```
+
+The deployment scripts:
+1. `cloud-run.sh` - Builds images in parallel via Cloud Build, deploys backend services to Cloud Run
+2. `firebase-hosting.sh` - Builds frontend with backend URL, deploys to Firebase Hosting
+
+Live URLs after deployment:
+- **Frontend:** https://cosense-cloud.web.app
+- **Backend API:** https://backend-xxxxx.run.app (auto-generated)
+
+---
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.

@@ -38,6 +38,7 @@ build/
 *~
 
 # Environment - protect secrets
+SECRETS.md
 .env
 .env.local
 .env.*.local
@@ -62,3 +63,4 @@ htmlcov/
 
 # Docker
 .docker/
+.firebase/
