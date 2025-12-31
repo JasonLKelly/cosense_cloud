@@ -3,6 +3,15 @@
 -- ============================================================================
 -- Uses ML_PREDICT with Vertex AI to generate natural language explanations
 -- for detected anomalies. This creates the "AI on data in motion" story.
+--
+-- ENVIRONMENT VARIABLES (replace before running):
+--   ${KAFKA_BROKERS}              - Confluent Cloud bootstrap server
+--   ${KAFKA_API_KEY}              - Confluent Cloud API key
+--   ${KAFKA_API_SECRET}           - Confluent Cloud API secret
+--   ${KAFKA_TOPIC_PREFIX}         - Topic prefix (e.g., "local" or "prod")
+--   ${GOOGLE_CLOUD_LOCATION}      - GCP region (e.g., "us-central1")
+--   ${GOOGLE_CLOUD_PROJECT}       - GCP project ID
+--   ${GCP_SERVICE_ACCOUNT_KEY}    - GCP service account key JSON (escaped)
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
@@ -12,8 +21,8 @@
 CREATE CONNECTION gemini_connection
 WITH (
     'type' = 'vertexai',
-    'endpoint' = 'https://${GCP_REGION}-aiplatform.googleapis.com/v1/projects/${GCP_PROJECT_ID}/locations/${GCP_REGION}/publishers/google/models/gemini-1.5-flash:generateContent',
-    'service-account-key' = '${GCP_SERVICE_ACCOUNT_KEY_JSON}'
+    'endpoint' = 'https://${GOOGLE_CLOUD_LOCATION}-aiplatform.googleapis.com/v1/projects/${GOOGLE_CLOUD_PROJECT}/locations/${GOOGLE_CLOUD_LOCATION}/publishers/google/models/gemini-1.5-flash:generateContent',
+    'service-account-key' = '${GCP_SERVICE_ACCOUNT_KEY}'
 );
 
 -- ----------------------------------------------------------------------------
@@ -47,8 +56,11 @@ CREATE TABLE anomaly_alerts_enriched (
     PRIMARY KEY (alert_id) NOT ENFORCED
 ) WITH (
     'connector' = 'kafka',
-    'topic' = 'anomaly.alerts.enriched',
+    'topic' = '${KAFKA_TOPIC_PREFIX}.anomaly.alerts.enriched',
     'properties.bootstrap.servers' = '${KAFKA_BROKERS}',
+    'properties.security.protocol' = 'SASL_SSL',
+    'properties.sasl.mechanism' = 'PLAIN',
+    'properties.sasl.jaas.config' = 'org.apache.kafka.common.security.plain.PlainLoginModule required username="${KAFKA_API_KEY}" password="${KAFKA_API_SECRET}";',
     'format' = 'json',
     'key.format' = 'raw',
     'key.fields' = 'alert_id'

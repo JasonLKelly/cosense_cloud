@@ -3,6 +3,12 @@
 -- ============================================================================
 -- Uses ML_DETECT_ANOMALIES to identify unusual patterns in the decision stream.
 -- Detects: decision rate spikes, repeated robot stops, sensor disagreements
+--
+-- ENVIRONMENT VARIABLES (replace before running):
+--   ${KAFKA_BROKERS}       - Confluent Cloud bootstrap server
+--   ${KAFKA_API_KEY}       - Confluent Cloud API key
+--   ${KAFKA_API_SECRET}    - Confluent Cloud API secret
+--   ${KAFKA_TOPIC_PREFIX}  - Topic prefix (e.g., "local" or "prod")
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
@@ -25,8 +31,11 @@ CREATE TABLE anomaly_alerts (
     PRIMARY KEY (alert_id) NOT ENFORCED
 ) WITH (
     'connector' = 'kafka',
-    'topic' = 'anomaly.alerts',
+    'topic' = '${KAFKA_TOPIC_PREFIX}.anomaly.alerts',
     'properties.bootstrap.servers' = '${KAFKA_BROKERS}',
+    'properties.security.protocol' = 'SASL_SSL',
+    'properties.sasl.mechanism' = 'PLAIN',
+    'properties.sasl.jaas.config' = 'org.apache.kafka.common.security.plain.PlainLoginModule required username="${KAFKA_API_KEY}" password="${KAFKA_API_SECRET}";',
     'format' = 'json',
     'key.format' = 'raw',
     'key.fields' = 'alert_id'
