@@ -174,9 +174,9 @@ def assess_risk(
     risk_score = min(1.0, risk_score)
 
     # Determine action
-    if risk_score >= 0.8:
+    if risk_score >= 0.7:
         action = Action.STOP
-    elif risk_score >= 0.5:
+    elif risk_score >= 0.4:
         action = Action.SLOW
     else:
         action = Action.CONTINUE
