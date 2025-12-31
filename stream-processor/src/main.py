@@ -260,6 +260,18 @@ def main():
     # Process robot telemetry -> state + decisions
     sdf_robots = app.dataframe(robot_topic)
 
+    # Filter out stale telemetry (more than 5 seconds old)
+    def is_fresh(value: dict) -> bool:
+        ts = value.get("timestamp", 0)
+        now_ms = time.time() * 1000
+        age_ms = now_ms - ts
+        if age_ms > 5000:  # Skip if older than 5 seconds
+            logger.debug(f"Skipping stale telemetry: {age_ms/1000:.1f}s old")
+            return False
+        return True
+
+    sdf_robots = sdf_robots.filter(is_fresh)
+
     # Process each robot update: emit state and optionally a decision
     def process_and_emit(value: dict) -> dict:
         """Update state, create coordination state, and check for decisions."""
@@ -280,8 +292,9 @@ def main():
     sdf_decisions = sdf_decisions.filter(lambda v: v is not None)
     sdf_decisions.to_topic(decisions_topic)
 
-    # Process human telemetry (just update state)
+    # Process human telemetry (just update state, filter stale)
     sdf_humans = app.dataframe(human_topic)
+    sdf_humans = sdf_humans.filter(is_fresh)
     sdf_humans.apply(lambda value: state.update_human(value))
 
     logger.info("Stream processor configured, starting...")
