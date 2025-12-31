@@ -707,6 +707,13 @@ body {
   font-weight: 600;
 }
 
+.decision-item-time {
+  font-size: 10px;
+  font-family: monospace;
+  color: var(--text-dim);
+  margin-left: auto;
+}
+
 .decision-item-summary {
   color: var(--text-muted);
 }
@@ -794,6 +801,14 @@ body {
 .alert-type {
   font-weight: 600;
   color: var(--text-primary);
+}
+
+.alert-time {
+  font-size: 10px;
+  font-family: monospace;
+  color: var(--text-dim);
+  margin-left: auto;
+  margin-right: var(--spacing-xs);
 }
 
 .alert-robot {

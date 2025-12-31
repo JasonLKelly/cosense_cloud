@@ -59,6 +59,21 @@ export function MetricsPanel({
     }
   }
 
+  const formatAlertTime = (timestamp: number): string => {
+    const date = new Date(timestamp)
+    return date.toLocaleTimeString('en-US', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    })
+  }
+
+  // Sort anomalies by detected_at (newest first) and limit to 20
+  const sortedAnomalies = [...anomalies]
+    .sort((a, b) => b.detected_at - a.detected_at)
+    .slice(0, 20)
+
   const getRobotStateClass = (robot: Robot): string => {
     const action = robot.commanded_action?.toLowerCase() || 'continue'
     return action
@@ -190,7 +205,7 @@ export function MetricsPanel({
             {decisions.length === 0 && (
               <div className="text-muted text-small">No decisions yet</div>
             )}
-            {decisions.map((d) => (
+            {[...decisions].reverse().map((d) => (
               <div
                 key={d.decision_id}
                 className={`decision-item ${d.action.toLowerCase()}`}
@@ -198,6 +213,7 @@ export function MetricsPanel({
                 <div className="decision-item-header">
                   <span className="decision-item-robot">{d.robot_id}</span>
                   <span className="decision-item-action">{d.action}</span>
+                  <span className="decision-item-time">{formatAlertTime(d.timestamp)}</span>
                 </div>
                 <div className="decision-item-summary">{d.summary}</div>
               </div>
@@ -220,10 +236,10 @@ export function MetricsPanel({
         </h4>
         {anomaliesExpanded && (
           <div className="alert-list">
-            {anomalies.length === 0 && (
+            {sortedAnomalies.length === 0 && (
               <div className="text-muted text-small">No alerts - system normal</div>
             )}
-            {anomalies.slice().reverse().map((a) => (
+            {sortedAnomalies.map((a) => (
               <div
                 key={a.alert_id}
                 className={`alert-item alert-${a.severity.toLowerCase()}`}
@@ -233,6 +249,7 @@ export function MetricsPanel({
                     {a.severity}
                   </span>
                   <span className="alert-type">{formatAlertType(a.alert_type)}</span>
+                  <span className="alert-time">{formatAlertTime(a.detected_at)}</span>
                   {onDismissAlert && (
                     <button
                       className="btn-dismiss"
