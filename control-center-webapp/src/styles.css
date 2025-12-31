@@ -1553,3 +1553,138 @@ body {
   height: 24px;
   color: var(--robot-continue);
 }
+
+/* ============================================
+   Performance Report Section
+   ============================================ */
+
+.ai-badge {
+  background: linear-gradient(135deg, var(--robot-continue) 0%, #60a5fa 100%);
+  color: #000;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-left: var(--spacing-xs);
+  text-transform: uppercase;
+}
+
+.report-content {
+  margin-top: var(--spacing-sm);
+}
+
+.report-loading {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--text-muted);
+  padding: var(--spacing-md);
+  background: var(--bg-primary);
+  border-radius: 4px;
+}
+
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--text-dim);
+  border-top-color: var(--robot-continue);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.report-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.category-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.category-badge.normal {
+  background: var(--robot-continue);
+  color: #000;
+}
+
+.category-badge.equipment {
+  background: var(--robot-stop);
+  color: #000;
+}
+
+.category-badge.environmental {
+  background: var(--robot-slow);
+  color: #000;
+}
+
+.category-badge.human_factor {
+  background: var(--robot-reroute);
+  color: #000;
+}
+
+.category-confidence {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: monospace;
+}
+
+.report-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-sm);
+}
+
+.report-stat {
+  background: var(--bg-primary);
+  padding: var(--spacing-sm);
+  border-radius: 4px;
+  text-align: center;
+}
+
+.report-stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  display: block;
+  color: var(--text-primary);
+}
+
+.report-stat-label {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.report-summary {
+  background: var(--bg-primary);
+  padding: var(--spacing-sm);
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  border-left: 3px solid var(--robot-continue);
+}
+
+.report-summary p {
+  margin: 0 0 0.5em 0;
+}
+
+.report-summary p:last-child {
+  margin-bottom: 0;
+}
+
+.report-timestamp {
+  font-size: 10px;
+  color: var(--text-dim);
+  font-family: monospace;
+  margin-top: var(--spacing-sm);
+  text-align: right;
+}

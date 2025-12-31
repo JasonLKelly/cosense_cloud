@@ -1,11 +1,14 @@
 import { useState } from 'react'
-import { SimState, Decision, Robot, AnomalyAlert } from '../types'
+import { SimState, Decision, Robot, AnomalyAlert, ShiftSummary } from '../types'
+import Markdown from 'react-markdown'
 
 interface MetricsPanelProps {
   simState: SimState | null
   robots: Robot[]
   decisions: Decision[]
   anomalies: AnomalyAlert[]
+  performanceReport?: ShiftSummary | null
+  reportLoading?: boolean
   onToggleVisibility: (visibility: 'normal' | 'degraded' | 'poor') => void
   onToggleConnectivity: (connectivity: 'normal' | 'degraded' | 'offline') => void
   onDecisionsExpandedChange: (expanded: boolean) => void
@@ -22,6 +25,8 @@ export function MetricsPanel({
   robots,
   decisions,
   anomalies,
+  performanceReport,
+  reportLoading,
   onToggleVisibility,
   onToggleConnectivity,
   onDecisionsExpandedChange,
@@ -35,6 +40,7 @@ export function MetricsPanel({
   const [decisionsExpanded, setDecisionsExpanded] = useState(true)
   const [robotsExpanded, setRobotsExpanded] = useState(true)
   const [anomaliesExpanded, setAnomaliesExpanded] = useState(true)
+  const [reportExpanded, setReportExpanded] = useState(true)
 
   const handleDecisionsToggle = () => {
     const newExpanded = !decisionsExpanded
@@ -309,6 +315,71 @@ export function MetricsPanel({
               </div>
               )
             })}
+          </div>
+        )}
+      </div>
+
+      {/* Performance Report - AI-generated shift summary */}
+      <div className="drawer-section">
+        <div className="drawer-title-row">
+          <h4
+            className="drawer-title collapsible"
+            onClick={() => setReportExpanded(!reportExpanded)}
+          >
+            <span>Performance Report</span>
+            {performanceReport && (
+              <span className="ai-badge">AI</span>
+            )}
+            <span className="collapse-icon">{reportExpanded ? '▼' : '▶'}</span>
+          </h4>
+        </div>
+        {reportExpanded && (
+          <div className="report-content">
+            {reportLoading && (
+              <div className="report-loading">
+                <div className="loading-spinner"></div>
+                <span>Generating report...</span>
+              </div>
+            )}
+            {!reportLoading && !performanceReport && (
+              <div className="text-muted text-small">
+                Waiting for shift summary from Flink...
+              </div>
+            )}
+            {performanceReport && !reportLoading && (
+              <>
+                <div className="report-header">
+                  <span className={`category-badge ${performanceReport.category.toLowerCase()}`}>
+                    {performanceReport.category}
+                  </span>
+                  <span className="category-confidence">
+                    {Math.round(performanceReport.category_confidence * 100)}%
+                  </span>
+                </div>
+                <div className="report-stats">
+                  <div className="report-stat">
+                    <span className="report-stat-value">{performanceReport.decision_count}</span>
+                    <span className="report-stat-label">Decisions</span>
+                  </div>
+                  <div className="report-stat">
+                    <span className="report-stat-value">{performanceReport.stop_count}</span>
+                    <span className="report-stat-label">Stops</span>
+                  </div>
+                  <div className="report-stat">
+                    <span className="report-stat-value">{performanceReport.slow_count}</span>
+                    <span className="report-stat-label">Slows</span>
+                  </div>
+                </div>
+                <div className="report-summary">
+                  <Markdown>{performanceReport.ai_summary}</Markdown>
+                </div>
+                {performanceReport.window_end && (
+                  <div className="report-timestamp">
+                    Generated: {formatAlertTime(performanceReport.window_end)}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
       </div>

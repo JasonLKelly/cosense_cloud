@@ -35,6 +35,7 @@ class StateBuffer:
         self.current_state: dict[str, dict] = {}  # Latest state per robot
         self.anomaly_alerts: deque[dict] = deque(maxlen=settings.max_anomalies_buffer)
         self.dismissed_alert_ids: set[str] = set()
+        self.shift_summaries: deque[dict] = deque(maxlen=settings.max_summaries_buffer)
 
     def add_decision(self, decision: dict):
         self.decisions.append(decision)
@@ -73,6 +74,10 @@ class StateBuffer:
             if alert.get("alert_id"):
                 self.dismissed_alert_ids.add(alert.get("alert_id"))
         self.anomaly_alerts.clear()
+
+    def add_shift_summary(self, summary: dict):
+        """Add a shift summary from Flink."""
+        self.shift_summaries.append(summary)
 
 
 buffer = StateBuffer()
@@ -128,6 +133,7 @@ async def consume_loop():
                 settings.topic(settings.coordination_decisions_topic),
                 settings.topic(settings.coordination_state_topic),
                 settings.topic(settings.anomaly_alerts_topic),
+                settings.topic(settings.shift_summaries_topic),
             ]
             consumer.subscribe(topics)
             logger.info(f"Kafka consumer subscribed to: {topics}")
@@ -171,6 +177,9 @@ async def consume_loop():
                             actual_value=value.get("actual_value", 0),
                             forecast_value=value.get("forecast_value", 1),
                         )
+                    elif topic == settings.topic(settings.shift_summaries_topic):
+                        buffer.add_shift_summary(value)
+                        logger.info(f"Received shift summary: {value.get('summary_id')}")
 
                 except Exception as e:
                     logger.error(f"Error processing message: {e}")
@@ -303,6 +312,41 @@ async def dismiss_anomaly(alert_id: str):
     """Dismiss an anomaly alert (removes it from the list)."""
     buffer.dismiss_anomaly(alert_id)
     return {"status": "dismissed", "alert_id": alert_id}
+
+
+# Shift summary endpoints
+@app.get("/summary/latest")
+async def get_latest_summary():
+    """Get the most recent shift summary from Flink.
+
+    Returns the latest AI-generated performance report with AutoML classification
+    and Gemini-generated narrative. Returns null if no summaries available.
+    """
+    if not buffer.shift_summaries:
+        return None
+    return buffer.shift_summaries[-1]
+
+
+@app.get("/summary/history")
+async def get_summary_history(limit: int = 10):
+    """Get recent shift summaries."""
+    return list(buffer.shift_summaries)[-limit:]
+
+
+@app.post("/summary/generate")
+async def generate_summary_on_demand():
+    """Generate a summary on-demand (for demo purposes).
+
+    This bypasses Flink and calls Gemini directly with the current buffered data.
+    Use this when you can't wait for the next 5-minute Flink window.
+    """
+    from .gemini import generate_performance_summary
+
+    summary = await generate_performance_summary(
+        decisions=list(buffer.decisions),
+        anomaly_alerts=list(buffer.anomaly_alerts),
+    )
+    return summary
 
 
 # SSE stream for real-time updates

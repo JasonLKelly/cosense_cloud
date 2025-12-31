@@ -58,6 +58,20 @@ export interface AnomalyAlert {
   context: string
 }
 
+export interface ShiftSummary {
+  summary_id: string
+  window_start: string | null
+  window_end: string | null
+  decision_count: number
+  stop_count: number
+  slow_count: number
+  sensor_disagreement_count: number
+  category: 'EQUIPMENT' | 'ENVIRONMENTAL' | 'HUMAN_FACTOR' | 'NORMAL'
+  category_confidence: number
+  context_summary: string
+  ai_summary: string
+}
+
 export interface ToolCallLog {
   tool: string
   params: Record<string, unknown>

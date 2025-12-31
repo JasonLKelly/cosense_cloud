@@ -772,3 +772,116 @@ async def ask_copilot_stream(
     except Exception as e:
         logger.error(f"Gemini streaming error: {e}")
         yield json.dumps({"type": "error", "message": str(e)})
+
+
+# ============================================================================
+# On-Demand Summary Generation
+# ============================================================================
+
+class PerformanceSummary(BaseModel):
+    """AI-generated performance summary (mirrors Flink output)."""
+    summary_id: str
+    window_start: str | None = None
+    window_end: str | None = None
+    decision_count: int
+    stop_count: int
+    slow_count: int
+    sensor_disagreement_count: int
+    category: str  # EQUIPMENT, ENVIRONMENTAL, HUMAN_FACTOR, NORMAL
+    category_confidence: float
+    context_summary: str
+    ai_summary: str
+
+
+async def generate_performance_summary(
+    decisions: list[dict],
+    anomaly_alerts: list[dict],
+) -> PerformanceSummary:
+    """Generate a performance summary on-demand (bypasses Flink).
+
+    This uses the same logic as the Flink pipeline but runs directly
+    in the backend for demo purposes.
+
+    Args:
+        decisions: Recent coordination decisions from buffer
+        anomaly_alerts: Recent anomaly alerts from buffer
+
+    Returns:
+        PerformanceSummary with AI-generated narrative
+    """
+    import time
+
+    client = get_client()
+    now_ms = int(time.time() * 1000)
+
+    # Aggregate decisions
+    decision_count = len(decisions)
+    stop_count = sum(1 for d in decisions if d.get("action") == "STOP")
+    slow_count = sum(1 for d in decisions if d.get("action") == "SLOW")
+    sensor_disagreement_count = sum(
+        1 for d in decisions
+        if d.get("primary_reason") == "SENSOR_DISAGREEMENT"
+    )
+
+    # Build context summary (similar to Flink LISTAGG)
+    context_parts = []
+    for d in decisions[-20:]:  # Limit to last 20 for prompt size
+        robot_id = d.get("robot_id", "unknown")
+        action = d.get("action", "?")
+        reason = d.get("primary_reason", "?")
+        context_parts.append(f"{robot_id}: {action} ({reason})")
+    context_summary = " | ".join(context_parts) if context_parts else "No recent decisions"
+
+    # Simple heuristic classification (AutoML would do this in Flink)
+    if sensor_disagreement_count >= 2:
+        category = "EQUIPMENT"
+        category_confidence = 0.85
+    elif stop_count >= 3:
+        category = "HUMAN_FACTOR"
+        category_confidence = 0.80
+    elif slow_count > decision_count * 0.5 and decision_count > 5:
+        category = "ENVIRONMENTAL"
+        category_confidence = 0.75
+    else:
+        category = "NORMAL"
+        category_confidence = 0.90
+
+    # Generate AI summary with Gemini
+    ai_summary = "Unable to generate summary - Gemini not configured."
+
+    if client:
+        prompt = (
+            "You are a warehouse safety analyst. Summarize this shift period for a supervisor in 2-3 sentences. "
+            "Focus on actionable insights. "
+            f"Classification: {category} ({int(category_confidence * 100)}% confidence). "
+            f"Decisions: {decision_count} total ({stop_count} stops, {slow_count} slows). "
+            f"Sensor disagreements: {sensor_disagreement_count}. "
+            f"Details: {context_summary[:500]}"
+        )
+
+        try:
+            response = await asyncio.to_thread(
+                lambda: client.models.generate_content(
+                    model=f"models/{settings.gemini_model}",
+                    contents=prompt,
+                )
+            )
+            if response.text:
+                ai_summary = response.text.strip()
+        except Exception as e:
+            logger.error(f"Gemini summary generation error: {e}")
+            ai_summary = f"Summary generation failed: {e}"
+
+    return PerformanceSummary(
+        summary_id=f"manual-{now_ms}",
+        window_start=None,
+        window_end=None,
+        decision_count=decision_count,
+        stop_count=stop_count,
+        slow_count=slow_count,
+        sensor_disagreement_count=sensor_disagreement_count,
+        category=category,
+        category_confidence=category_confidence,
+        context_summary=context_summary,
+        ai_summary=ai_summary,
+    )

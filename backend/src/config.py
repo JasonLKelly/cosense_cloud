@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     coordination_state_topic: str = "coordination.state"
     coordination_decisions_topic: str = "coordination.decisions"
     anomaly_alerts_topic: str = "anomaly.alerts"  # Raw alerts from Flink ML_DETECT_ANOMALIES
+    shift_summaries_topic: str = "shift.summaries"  # AI-generated shift summaries from Flink
 
     # Simulator service (for forwarding commands)
     simulator_url: str = "http://simulator:8000"
@@ -45,6 +46,7 @@ class Settings(BaseSettings):
     max_decisions_buffer: int = 100
     max_state_buffer: int = 50
     max_anomalies_buffer: int = 50
+    max_summaries_buffer: int = 10  # Keep last 10 shift summaries
 
     class Config:
         env_prefix = ""

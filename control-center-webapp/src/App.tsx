@@ -3,6 +3,7 @@ import { Robot, AnomalyAlert, API_URL, CONFLUENT_URL, POLL_INTERVAL } from './ty
 import { useSimState } from './hooks/useSimState'
 import { useGemini } from './hooks/useGemini'
 import { useMap } from './hooks/useMap'
+import { usePerformanceReport } from './hooks/usePerformanceReport'
 import { EntityDrawer } from './components/EntityDrawer'
 import { AskGemini } from './components/AskGemini'
 import { MetricsPanel } from './components/MetricsPanel'
@@ -41,6 +42,11 @@ export default function App() {
   } = useGemini()
 
   const { map, error: mapError } = useMap('zone-c')
+
+  const {
+    latestSummary: performanceReport,
+    loading: reportLoading,
+  } = usePerformanceReport()
 
   const [selectedRobotId, setSelectedRobotId] = useState<string | null>(null)
   const [hoveredRobotId, setHoveredRobotId] = useState<string | null>(null)
@@ -173,6 +179,8 @@ export default function App() {
           robots={state?.robots || []}
           decisions={decisions}
           anomalies={anomalies}
+          performanceReport={performanceReport}
+          reportLoading={reportLoading}
           onToggleVisibility={toggleVisibility}
           onToggleConnectivity={toggleConnectivity}
           onDecisionsExpandedChange={setPollDecisions}
