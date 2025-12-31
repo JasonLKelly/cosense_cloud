@@ -13,6 +13,7 @@ import httpx
 from confluent_kafka import Consumer, KafkaError
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
@@ -145,6 +146,9 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+# GZip compression for responses > 500 bytes
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 # CORS for frontend
 app.add_middleware(
