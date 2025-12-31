@@ -10,8 +10,6 @@ interface AskGeminiProps {
   streamingTools: string[]
   onAsk: (question: string) => void
   onClear: () => void
-  verboseMode: boolean
-  onToggleVerbose: () => void
 }
 
 const MIN_HEIGHT = 100
@@ -26,8 +24,6 @@ export function AskGemini({
   streamingTools,
   onAsk,
   onClear,
-  verboseMode,
-  onToggleVerbose,
 }: AskGeminiProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [question, setQuestion] = useState('')
@@ -123,20 +119,7 @@ export function AskGemini({
         onClick={() => setCollapsed(!collapsed)}
       >
         <span className="drawer-title">Ask Gemini</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <label
-            style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <input
-              type="checkbox"
-              checked={verboseMode}
-              onChange={onToggleVerbose}
-            />
-            Verbose
-          </label>
-          <span>{collapsed ? '▲' : '▼'}</span>
-        </div>
+        <span>{collapsed ? '▲' : '▼'}</span>
       </div>
 
       {!collapsed && (
@@ -193,7 +176,7 @@ export function AskGemini({
 
           {response && (
             <div className="gemini-response" ref={responseRef}>
-              {verboseMode && response.tool_calls.length > 0 && (
+              {response.tool_calls.length > 0 && (
                 <div className="gemini-tool-calls">
                   Tools called:{' '}
                   {response.tool_calls.map((tc, i) => (

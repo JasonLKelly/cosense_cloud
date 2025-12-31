@@ -16,7 +16,6 @@ export function PipelineActivityPage() {
     enabled: true,
   })
   const [filter, setFilter] = useState<FilterType>('all')
-  const [verboseMode, setVerboseMode] = useState(true)
 
   const filteredEvents = events
     .filter(e => filter === 'all' || e.type === filter)
@@ -57,7 +56,7 @@ export function PipelineActivityPage() {
             <div className="activity-main">
               <span className="activity-tool-name">{data.tool_name}</span>
             </div>
-            {verboseMode && data.params && Object.keys(data.params).length > 0 && (
+            {data.params && Object.keys(data.params).length > 0 && (
               <div className="activity-details">
                 {Object.entries(data.params).map(([k, v]) => (
                   <span key={k} className="activity-param">
@@ -81,16 +80,14 @@ export function PipelineActivityPage() {
               <span className="activity-arrow">&#x2192;</span>
               <span className={`activity-action ${actionClass}`}>{data.action}</span>
             </div>
-            {verboseMode && (
-              <div className="activity-details">
-                <span className="activity-risk">
-                  Risk: {(data.risk_score * 100).toFixed(0)}%
-                </span>
-                {data.reason_codes.length > 0 && (
-                  <span className="activity-reasons">{data.reason_codes.join(', ')}</span>
-                )}
-              </div>
-            )}
+            <div className="activity-details">
+              <span className="activity-risk">
+                Risk: {(data.risk_score * 100).toFixed(0)}%
+              </span>
+              {data.reason_codes.length > 0 && (
+                <span className="activity-reasons">{data.reason_codes.join(', ')}</span>
+              )}
+            </div>
           </div>
         )
       }
@@ -109,15 +106,13 @@ export function PipelineActivityPage() {
               </span>
               <span className="activity-alert-type">{formatAlertType(data.alert_type)}</span>
             </div>
-            {verboseMode && (
-              <div className="activity-details">
-                <span className="activity-deviation">
-                  Deviation: {data.deviation_percent > 0 ? '+' : ''}
-                  {data.deviation_percent.toFixed(0)}%
-                </span>
-                {data.robot_id && <span className="activity-robot-ref">{data.robot_id}</span>}
-              </div>
-            )}
+            <div className="activity-details">
+              <span className="activity-deviation">
+                Deviation: {data.deviation_percent > 0 ? '+' : ''}
+                {data.deviation_percent.toFixed(0)}%
+              </span>
+              {data.robot_id && <span className="activity-robot-ref">{data.robot_id}</span>}
+            </div>
           </div>
         )
       }
@@ -134,14 +129,6 @@ export function PipelineActivityPage() {
           <h1>Pipeline Activity</h1>
         </div>
         <div className="activity-controls">
-          <label className="verbose-toggle">
-            <input
-              type="checkbox"
-              checked={verboseMode}
-              onChange={e => setVerboseMode(e.target.checked)}
-            />
-            Verbose
-          </label>
           <button className="btn-clear" onClick={clearEvents}>
             Clear
           </button>

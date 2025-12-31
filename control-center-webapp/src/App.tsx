@@ -42,7 +42,6 @@ export default function App() {
 
   const [selectedRobotId, setSelectedRobotId] = useState<string | null>(null)
   const [hoveredRobotId, setHoveredRobotId] = useState<string | null>(null)
-  const [verboseMode, setVerboseMode] = useState(false)
   const [showResetDialog, setShowResetDialog] = useState(false)
 
   // Get live robot data for selected robot
@@ -180,8 +179,6 @@ export default function App() {
         streamingTools={streamingTools}
         onAsk={ask}
         onClear={clear}
-        verboseMode={verboseMode}
-        onToggleVerbose={() => setVerboseMode(!verboseMode)}
       />
 
       {/* Entity Drawer (slides in from right) */}
