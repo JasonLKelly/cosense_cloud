@@ -18,6 +18,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from .config import settings
 from .gemini import ask_copilot, ask_copilot_stream, OperatorAnswer
+from .activity import activity_buffer, emit_decision, emit_anomaly
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -96,12 +97,28 @@ async def consume_loop():
 
                     if topic == settings.topic(settings.coordination_decisions_topic):
                         buffer.add_decision(value)
+                        # Emit activity event
+                        await emit_decision(
+                            robot_id=value.get("robot_id", ""),
+                            action=value.get("action", ""),
+                            reason_codes=value.get("reason_codes", []),
+                            risk_score=value.get("risk_score", 0),
+                        )
                     elif topic == settings.topic(settings.coordination_state_topic):
                         buffer.add_robot_state(value)
                     elif topic == settings.topic(settings.zone_context_topic):
                         buffer.update_zone(value)
                     elif topic == settings.topic(settings.anomaly_alerts_topic):
                         buffer.add_anomaly_alert(value)
+                        # Emit activity event
+                        await emit_anomaly(
+                            alert_type=value.get("alert_type", ""),
+                            severity=value.get("severity", ""),
+                            zone_id=value.get("zone_id", ""),
+                            robot_id=value.get("robot_id"),
+                            actual_value=value.get("actual_value", 0),
+                            forecast_value=value.get("forecast_value", 1),
+                        )
 
                 except Exception as e:
                     logger.error(f"Error processing message: {e}")
@@ -250,6 +267,46 @@ async def stream_updates():
                     last_states[robot_id] = state
 
             await asyncio.sleep(0.1)
+
+    return EventSourceResponse(event_generator())
+
+
+# SSE stream for pipeline activity (for Pipeline Activity page)
+@app.get("/stream/activity")
+async def stream_activity():
+    """Server-Sent Events stream for pipeline activity events.
+
+    Events include:
+    - tool_call: Gemini tool invocations
+    - decision: Coordination decisions from stream processor
+    - anomaly: AI-detected anomalies from Flink pipeline
+    """
+
+    async def event_generator():
+        # Subscribe to activity buffer
+        queue = await activity_buffer.subscribe()
+
+        try:
+            # Send recent events first
+            for event in activity_buffer.get_recent(30):
+                yield {
+                    "event": "activity",
+                    "data": json.dumps(event.model_dump()),
+                }
+
+            # Stream new events
+            while True:
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=30.0)
+                    yield {
+                        "event": "activity",
+                        "data": json.dumps(event.model_dump()),
+                    }
+                except asyncio.TimeoutError:
+                    # Send keepalive
+                    yield {"event": "keepalive", "data": "{}"}
+        finally:
+            await activity_buffer.unsubscribe(queue)
 
     return EventSourceResponse(event_generator())
 

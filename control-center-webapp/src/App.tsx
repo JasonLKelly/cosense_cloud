@@ -106,6 +106,14 @@ export default function App() {
             </>
           )}
           <a
+            href="/activity"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="header-link"
+          >
+            Pipeline
+          </a>
+          <a
             href={CONFLUENT_URL}
             target="_blank"
             rel="noopener noreferrer"

@@ -130,6 +130,38 @@ export interface WarehouseMap {
   human_spawn_zones: string[]
 }
 
+// Pipeline Activity Types
+export type ActivityType = 'tool_call' | 'decision' | 'anomaly'
+
+export interface ActivityEvent {
+  type: ActivityType
+  timestamp_ms: number
+  data: ToolCallActivityData | DecisionActivityData | AnomalyActivityData
+}
+
+export interface ToolCallActivityData {
+  tool_name: string
+  params: Record<string, unknown>
+  question_id?: string
+}
+
+export interface DecisionActivityData {
+  robot_id: string
+  action: string
+  reason_codes: string[]
+  risk_score: number
+}
+
+export interface AnomalyActivityData {
+  alert_type: string
+  severity: string
+  zone_id: string
+  robot_id: string | null
+  actual_value: number
+  forecast_value: number
+  deviation_percent: number
+}
+
 // API URL from environment
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
 

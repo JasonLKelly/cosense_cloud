@@ -12,6 +12,7 @@ from google.genai import types
 from pydantic import BaseModel
 
 from .config import settings
+from .activity import emit_tool_call
 
 logger = logging.getLogger(__name__)
 
@@ -740,6 +741,11 @@ async def ask_copilot_stream(
                                 if fc and hasattr(fc, 'name') and fc.name and fc.name not in seen_tools:
                                     seen_tools.add(fc.name)
                                     event_queue.put({"type": "tool", "name": fc.name})
+                                    # Emit to activity buffer for Pipeline Activity page
+                                    emit_tool_call(
+                                        tool_name=fc.name,
+                                        params=dict(fc.args) if fc.args else {},
+                                    )
 
                 # Extract text from chunk candidates
                 try:
