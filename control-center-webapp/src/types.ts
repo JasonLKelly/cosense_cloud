@@ -56,7 +56,6 @@ export interface AnomalyAlert {
   upper_bound: number
   severity: 'HIGH' | 'MEDIUM'
   context: string
-  ai_explanation: string
 }
 
 export interface ToolCallLog {
@@ -109,7 +108,7 @@ export interface WarehouseMap {
 }
 
 // Pipeline Activity Types
-export type ActivityType = 'tool_call' | 'decision' | 'anomaly' | 'anomaly_raw'
+export type ActivityType = 'tool_call' | 'decision' | 'anomaly'
 
 export interface ActivityEvent {
   type: ActivityType
@@ -137,7 +136,6 @@ export interface AnomalyActivityData {
   actual_value: number
   forecast_value: number
   deviation_percent: number
-  ai_explanation?: string  // Only present for enriched anomalies
 }
 
 // API URL from environment

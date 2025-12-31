@@ -13,8 +13,7 @@ class ActivityType(str, Enum):
     """Types of pipeline activity events."""
     TOOL_CALL = "tool_call"
     DECISION = "decision"
-    ANOMALY = "anomaly"  # Enriched anomaly (with AI explanation)
-    ANOMALY_RAW = "anomaly_raw"  # Raw anomaly (before AI enrichment)
+    ANOMALY = "anomaly"
 
 
 class ActivityEvent(BaseModel):
@@ -105,37 +104,11 @@ async def emit_anomaly(
     robot_id: str | None,
     actual_value: float,
     forecast_value: float,
-    ai_explanation: str | None = None,
 ):
-    """Emit an enriched anomaly detection event (with AI explanation)."""
+    """Emit an anomaly detection event."""
     deviation = ((actual_value - forecast_value) / forecast_value * 100) if forecast_value else 0
     event = ActivityEvent(
         type=ActivityType.ANOMALY,
-        timestamp_ms=int(time.time() * 1000),
-        data={
-            "alert_type": alert_type,
-            "severity": severity,
-            "robot_id": robot_id,
-            "actual_value": actual_value,
-            "forecast_value": forecast_value,
-            "deviation_percent": round(deviation, 1),
-            "ai_explanation": ai_explanation,
-        },
-    )
-    await activity_buffer.add_event(event)
-
-
-async def emit_anomaly_raw(
-    alert_type: str,
-    severity: str,
-    robot_id: str | None,
-    actual_value: float,
-    forecast_value: float,
-):
-    """Emit a raw anomaly detection event (before AI enrichment)."""
-    deviation = ((actual_value - forecast_value) / forecast_value * 100) if forecast_value else 0
-    event = ActivityEvent(
-        type=ActivityType.ANOMALY_RAW,
         timestamp_ms=int(time.time() * 1000),
         data={
             "alert_type": alert_type,

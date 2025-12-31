@@ -19,7 +19,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from .config import settings
 from .gemini import ask_copilot, ask_copilot_stream, OperatorAnswer
-from .activity import activity_buffer, emit_decision, emit_anomaly, emit_anomaly_raw
+from .activity import activity_buffer, emit_decision, emit_anomaly
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -120,7 +120,6 @@ async def consume_loop():
                 settings.topic(settings.coordination_decisions_topic),
                 settings.topic(settings.coordination_state_topic),
                 settings.topic(settings.anomaly_alerts_topic),
-                settings.topic(settings.raw_anomaly_alerts_topic),
             ]
             consumer.subscribe(topics)
             logger.info(f"Kafka consumer subscribed to: {topics}")
@@ -156,20 +155,8 @@ async def consume_loop():
                     elif topic == settings.topic(settings.coordination_state_topic):
                         buffer.add_robot_state(value)
                     elif topic == settings.topic(settings.anomaly_alerts_topic):
-                        # Enriched alerts (with AI explanation) - add to buffer for UI
                         buffer.add_anomaly_alert(value)
-                        # Emit enriched activity event
                         await emit_anomaly(
-                            alert_type=value.get("alert_type", ""),
-                            severity=value.get("severity", ""),
-                            robot_id=value.get("robot_id"),
-                            actual_value=value.get("actual_value", 0),
-                            forecast_value=value.get("forecast_value", 1),
-                            ai_explanation=value.get("ai_explanation"),
-                        )
-                    elif topic == settings.topic(settings.raw_anomaly_alerts_topic):
-                        # Raw alerts (before AI enrichment) - only for activity stream
-                        await emit_anomaly_raw(
                             alert_type=value.get("alert_type", ""),
                             severity=value.get("severity", ""),
                             robot_id=value.get("robot_id"),

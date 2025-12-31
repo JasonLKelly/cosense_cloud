@@ -27,8 +27,7 @@ class Settings(BaseSettings):
     # Topics to consume (base names)
     coordination_state_topic: str = "coordination.state"
     coordination_decisions_topic: str = "coordination.decisions"
-    anomaly_alerts_topic: str = "anomaly.alerts.enriched"  # Enriched with AI explanations
-    raw_anomaly_alerts_topic: str = "anomaly.alerts"  # Raw alerts from ML_DETECT_ANOMALIES
+    anomaly_alerts_topic: str = "anomaly.alerts"  # Raw alerts from Flink ML_DETECT_ANOMALIES
 
     # Simulator service (for forwarding commands)
     simulator_url: str = "http://simulator:8000"

@@ -10,7 +10,6 @@ interface ActivityStats {
   toolCalls: number
   decisions: number
   anomalies: number
-  anomaliesRaw: number
 }
 
 export function usePipelineActivity(options: UsePipelineActivityOptions = {}) {
@@ -71,7 +70,6 @@ export function usePipelineActivity(options: UsePipelineActivityOptions = {}) {
     toolCalls: events.filter(e => e.type === 'tool_call').length,
     decisions: events.filter(e => e.type === 'decision').length,
     anomalies: events.filter(e => e.type === 'anomaly').length,
-    anomaliesRaw: events.filter(e => e.type === 'anomaly_raw').length,
   }
 
   return {
