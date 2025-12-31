@@ -200,6 +200,37 @@ export function MetricsPanel({
         )}
       </div>
 
+      {/* Recent Decisions */}
+      <div className="drawer-section">
+        <h4
+          className="drawer-title collapsible"
+          onClick={handleDecisionsToggle}
+        >
+          <span>Recent Decisions</span>
+          <span className="collapse-icon">{decisionsExpanded ? '▼' : '▶'}</span>
+        </h4>
+        {decisionsExpanded && (
+          <div className="decision-list">
+            {decisions.length === 0 && (
+              <div className="text-muted text-small">No decisions yet</div>
+            )}
+            {[...decisions].reverse().map((d) => (
+              <div
+                key={d.decision_id}
+                className={`decision-item ${d.action.toLowerCase()}`}
+              >
+                <div className="decision-item-header">
+                  <span className="decision-item-robot">{d.robot_id}</span>
+                  <span className="decision-item-action">{d.action}</span>
+                  <span className="decision-item-time">{formatAlertTime(d.timestamp)}</span>
+                </div>
+                <div className="decision-item-summary">{d.summary}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* AI Alerts - Flink-detected anomalies */}
       <div className="drawer-section">
         <div className="drawer-title-row">
