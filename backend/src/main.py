@@ -105,7 +105,7 @@ def create_consumer() -> Consumer:
     """Create Kafka consumer."""
     config = settings.get_kafka_config()
     config["group.id"] = settings.prefixed_consumer_group
-    config["auto.offset.reset"] = "latest"
+    config["auto.offset.reset"] = "earliest"
     return Consumer(config)
 
 
@@ -116,12 +116,13 @@ async def consume_loop():
     while True:
         try:
             consumer = create_consumer()
-            consumer.subscribe([
+            topics = [
                 settings.topic(settings.coordination_decisions_topic),
                 settings.topic(settings.coordination_state_topic),
                 settings.topic(settings.anomaly_alerts_topic),
-            ])
-            logger.info("Kafka consumer connected")
+            ]
+            consumer.subscribe(topics)
+            logger.info(f"Kafka consumer subscribed to: {topics}")
 
             while True:
                 msg = consumer.poll(timeout=0.1)
@@ -136,7 +137,11 @@ async def consume_loop():
 
                 try:
                     topic = msg.topic()
-                    value = json.loads(msg.value().decode("utf-8"))
+                    raw = msg.value()
+                    # Strip 5-byte Schema Registry header if present (magic byte + schema ID)
+                    if raw[:1] == b'\x00':
+                        raw = raw[5:]
+                    value = json.loads(raw.decode("utf-8"))
 
                     if topic == settings.topic(settings.coordination_decisions_topic):
                         buffer.add_decision(value)
