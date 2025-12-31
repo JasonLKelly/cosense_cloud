@@ -56,6 +56,35 @@ buffer = StateBuffer()
 consumer: Consumer | None = None
 consumer_task: asyncio.Task | None = None
 
+# Simple cache for simulator state to reduce proxy latency
+class SimulatorStateCache:
+    """Cache simulator state to avoid repeated HTTP calls."""
+    def __init__(self, ttl_ms: int = 100):
+        self.ttl_ms = ttl_ms
+        self.cached_state: dict | None = None
+        self.cached_at: float = 0
+        self._lock = asyncio.Lock()
+
+    async def get_state(self, simulator_url: str) -> dict:
+        """Get state from cache or fetch from simulator."""
+        now = time.time() * 1000
+        if self.cached_state and (now - self.cached_at) < self.ttl_ms:
+            return self.cached_state
+
+        async with self._lock:
+            # Double-check after acquiring lock
+            now = time.time() * 1000
+            if self.cached_state and (now - self.cached_at) < self.ttl_ms:
+                return self.cached_state
+
+            async with httpx.AsyncClient() as client:
+                response = await client.get(f"{simulator_url}/state")
+                self.cached_state = response.json()
+                self.cached_at = time.time() * 1000
+                return self.cached_state
+
+sim_state_cache = SimulatorStateCache(ttl_ms=100)
+
 
 def create_consumer() -> Consumer:
     """Create Kafka consumer."""
@@ -393,16 +422,14 @@ async def reset_scenario(params: ResetRequest | None = None):
             raise HTTPException(status_code=503, detail=f"Simulator unavailable: {e}")
 
 
-# Get simulator state directly
+# Get simulator state (cached to reduce latency)
 @app.get("/simulator/state")
 async def get_simulator_state():
     """Get current simulator state (for UI rendering)."""
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.get(f"{settings.simulator_url}/state")
-            return response.json()
-        except httpx.RequestError as e:
-            raise HTTPException(status_code=503, detail=f"Simulator unavailable: {e}")
+    try:
+        return await sim_state_cache.get_state(settings.simulator_url)
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=503, detail=f"Simulator unavailable: {e}")
 
 
 # Robot control endpoints (proxied to simulator)
