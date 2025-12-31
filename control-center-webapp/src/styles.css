@@ -18,6 +18,7 @@
   --robot-slow: #facc15;
   --robot-stop: #f87171;
   --robot-reroute: #a78bfa;
+  --robot-yield: #fb923c;
   --human: #60a5fa;
 
   /* Status Colors */
@@ -224,6 +225,7 @@ body {
 .map-entity.robot.slow { background: var(--robot-slow); }
 .map-entity.robot.stop { background: var(--robot-stop); }
 .map-entity.robot.reroute { background: var(--robot-reroute); }
+.map-entity.robot.yielding { background: var(--robot-yield); }
 
 .map-entity.robot.selected {
   box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5);
@@ -345,6 +347,11 @@ body {
   color: #000;
 }
 
+.robot-grid-item.yielding {
+  background: var(--robot-yield);
+  color: #000;
+}
+
 .robot-grid-item.reroute {
   background: var(--robot-reroute);
   color: #000;
@@ -377,6 +384,7 @@ body {
 .legend-dot.continue { background: var(--robot-continue); }
 .legend-dot.slow { background: var(--robot-slow); }
 .legend-dot.stop { background: var(--robot-stop); }
+.legend-dot.yielding { background: var(--robot-yield); }
 .legend-dot.reroute { background: var(--robot-reroute); }
 
 /* ============================================

@@ -82,6 +82,7 @@ export function MetricsPanel({
     .slice(0, 20)
 
   const getRobotStateClass = (robot: Robot): string => {
+    if (robot.motion_state === 'yielding') return 'yielding'
     const action = robot.commanded_action?.toLowerCase() || 'continue'
     return action
   }
@@ -173,6 +174,7 @@ export function MetricsPanel({
             <span className="legend-item"><span className="legend-dot continue"></span>OK</span>
             <span className="legend-item"><span className="legend-dot slow"></span>Slow</span>
             <span className="legend-item"><span className="legend-dot stop"></span>Stop</span>
+            <span className="legend-item"><span className="legend-dot yielding"></span>Yield</span>
             <span className="legend-item"><span className="legend-dot reroute"></span>Reroute</span>
           </div>
           <div className="robot-grid">

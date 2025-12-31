@@ -6,7 +6,7 @@ export interface Robot {
   y: number
   velocity: number
   heading: number
-  motion_state: 'moving' | 'stopped' | 'slowing'
+  motion_state: 'moving' | 'stopped' | 'slowing' | 'yielding'
   commanded_action: 'CONTINUE' | 'SLOW' | 'STOP' | 'REROUTE'
   destination?: string
   manual_override?: boolean

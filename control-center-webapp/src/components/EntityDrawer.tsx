@@ -55,6 +55,10 @@ export function EntityDrawer({ robot, onClose, onStop, onStart }: EntityDrawerPr
               >
                 Release Manual Stop
               </button>
+            ) : robot.motion_state === 'yielding' ? (
+              <button className="btn btn-secondary" disabled>
+                Yielding to Other Robot
+              </button>
             ) : robot.motion_state !== 'stopped' ? (
               <button
                 className="btn btn-danger"

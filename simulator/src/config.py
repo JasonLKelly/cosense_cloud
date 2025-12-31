@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     robot_count: int = 20
     human_count: int = 10
 
+    # Robot-to-robot collision avoidance buffer (meters)
+    robot_buffer_distance: float = 1.5
+
     # Random seed (0 = random)
     seed: int = 0
 

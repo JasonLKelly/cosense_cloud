@@ -15,7 +15,7 @@ class Robot:
     y: float
     velocity: float = 0.0
     heading: float = 0.0  # degrees
-    motion_state: Literal["moving", "stopped", "slowing"] = "stopped"
+    motion_state: Literal["moving", "stopped", "slowing", "yielding"] = "stopped"
 
     # Path following
     path: list[tuple[float, float]] = field(default_factory=list)
@@ -55,7 +55,16 @@ class Robot:
         self.path = []
         self.path_index = 0
 
-    def update(self, dt: float, world_width: float, world_height: float, rng: random.Random, sim_time: float = 0.0):
+    def update(
+        self,
+        dt: float,
+        world_width: float,
+        world_height: float,
+        rng: random.Random,
+        sim_time: float = 0.0,
+        other_robots: list["Robot"] | None = None,
+        robot_buffer_distance: float = 1.5,
+    ):
         """Update position based on current state and target/path."""
         max_speed = 2.0  # m/s
         acceleration = 1.0  # m/s^2
@@ -82,6 +91,33 @@ class Robot:
             self.velocity = 0.0
             self.motion_state = "stopped"
             return
+
+        # Robot-to-robot collision avoidance with priority (lower ID has right-of-way)
+        if other_robots:
+            min_robot_dist = float("inf")
+            must_yield = False
+            for other in other_robots:
+                if other.robot_id == self.robot_id:
+                    continue
+                dist = math.sqrt((other.x - self.x) ** 2 + (other.y - self.y) ** 2)
+                if dist < robot_buffer_distance:
+                    # Only yield if the other robot has priority (lower numeric ID)
+                    self_num = int(self.robot_id.split("-")[-1])
+                    other_num = int(other.robot_id.split("-")[-1])
+                    if other_num < self_num:
+                        must_yield = True
+                        if dist < min_robot_dist:
+                            min_robot_dist = dist
+
+            if must_yield:
+                # Stop if within half buffer distance
+                if min_robot_dist < robot_buffer_distance * 0.5:
+                    self.velocity = max(0, self.velocity - acceleration * 2 * dt)
+                    self.motion_state = "yielding"
+                    return
+                # Slow down if within buffer distance
+                else:
+                    max_speed = min(max_speed, 0.3)
 
         # Calculate direction to target
         dx = target_x - self.x

@@ -194,11 +194,11 @@ export function WarehouseMapView({
         return (
           <div
             key={robot.robot_id}
-            className={`map-entity robot ${robot.commanded_action.toLowerCase()} ${isSelected ? 'selected' : ''} ${isHovered ? 'hovered' : ''}`}
+            className={`map-entity robot ${robot.motion_state === 'yielding' ? 'yielding' : robot.commanded_action.toLowerCase()} ${isSelected ? 'selected' : ''} ${isHovered ? 'hovered' : ''}`}
             style={{
               left: robot.x * scale - 10,
               top: robot.y * scale - 10,
-              background: color,
+              background: robot.motion_state === 'yielding' ? '#fb923c' : color,
             }}
             onClick={() => onRobotClick(robot)}
             title={`${robot.robot_id}: ${robot.motion_state} → ${robot.commanded_action}`}

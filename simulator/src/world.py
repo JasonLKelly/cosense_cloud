@@ -257,7 +257,15 @@ class World:
 
         # Update all entities
         for robot in self.robots:
-            robot.update(dt, self.width, self.height, self.rng, self.sim_time)
+            robot.update(
+                dt,
+                self.width,
+                self.height,
+                self.rng,
+                self.sim_time,
+                other_robots=self.robots,
+                robot_buffer_distance=settings.robot_buffer_distance,
+            )
             # Assign new destination if needed (only if not paused and not stopped)
             if robot.target_x is None and robot.commanded_action != "STOP" and self.sim_time >= robot.idle_until:
                 self._assign_random_destination(robot)
