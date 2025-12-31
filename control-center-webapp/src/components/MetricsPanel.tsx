@@ -250,8 +250,15 @@ export function MetricsPanel({
                   <div className="alert-robot">{a.robot_id}</div>
                 )}
                 <div className="alert-context">{a.context}</div>
-                <div className="alert-explanation">{a.ai_explanation}</div>
-                {onExplainAlert && (
+                {a.ai_explanation && (
+                  <div className="alert-ai-explanation">
+                    <svg className="gemini-icon-inline" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5z"/>
+                    </svg>
+                    <span>{a.ai_explanation}</span>
+                  </div>
+                )}
+                {onExplainAlert && !a.ai_explanation && (
                   <button
                     className="btn-explain"
                     onClick={() => onExplainAlert(a)}

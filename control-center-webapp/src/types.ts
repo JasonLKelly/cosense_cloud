@@ -109,7 +109,7 @@ export interface WarehouseMap {
 }
 
 // Pipeline Activity Types
-export type ActivityType = 'tool_call' | 'decision' | 'anomaly'
+export type ActivityType = 'tool_call' | 'decision' | 'anomaly' | 'anomaly_raw'
 
 export interface ActivityEvent {
   type: ActivityType
@@ -137,6 +137,7 @@ export interface AnomalyActivityData {
   actual_value: number
   forecast_value: number
   deviation_percent: number
+  ai_explanation?: string  // Only present for enriched anomalies
 }
 
 // API URL from environment

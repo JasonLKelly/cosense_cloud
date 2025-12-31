@@ -8,7 +8,7 @@ import {
 } from '../types'
 import '../styles.css'
 
-type FilterType = 'all' | 'tool_call' | 'decision' | 'anomaly'
+type FilterType = 'all' | 'tool_call' | 'decision' | 'anomaly' | 'anomaly_raw'
 
 export function PipelineActivityPage() {
   const { events, connected, stats, clearEvents } = usePipelineActivity({
@@ -18,7 +18,11 @@ export function PipelineActivityPage() {
   const [filter, setFilter] = useState<FilterType>('all')
 
   const filteredEvents = events
-    .filter(e => filter === 'all' || e.type === filter)
+    .filter(e => {
+      if (filter === 'all') return true
+      if (filter === 'anomaly') return e.type === 'anomaly' || e.type === 'anomaly_raw'
+      return e.type === filter
+    })
     .slice()
     .reverse() // Most recent first
 
@@ -96,7 +100,37 @@ export function PipelineActivityPage() {
         return (
           <div
             key={index}
-            className={`activity-row activity-anomaly ${data.severity.toLowerCase()}`}
+            className={`activity-row activity-anomaly enriched ${data.severity.toLowerCase()}`}
+          >
+            <div className="activity-time">{formatTime(event.timestamp_ms)}</div>
+            <div className="activity-icon">
+              <svg className="gemini-icon-activity" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5z"/>
+              </svg>
+            </div>
+            <div className="activity-main">
+              <span className={`activity-severity ${data.severity.toLowerCase()}`}>
+                {data.severity}
+              </span>
+              <span className="activity-alert-type">{formatAlertType(data.alert_type)}</span>
+              <span className="activity-enriched-badge">AI Enriched</span>
+            </div>
+            <div className="activity-details">
+              <span className="activity-deviation">
+                Deviation: {data.deviation_percent > 0 ? '+' : ''}
+                {data.deviation_percent.toFixed(0)}%
+              </span>
+              {data.robot_id && <span className="activity-robot-ref">{data.robot_id}</span>}
+            </div>
+          </div>
+        )
+      }
+      case 'anomaly_raw': {
+        const data = event.data as AnomalyActivityData
+        return (
+          <div
+            key={index}
+            className={`activity-row activity-anomaly raw ${data.severity.toLowerCase()}`}
           >
             <div className="activity-time">{formatTime(event.timestamp_ms)}</div>
             <div className="activity-icon">&#x1F6A8;</div>
@@ -105,6 +139,7 @@ export function PipelineActivityPage() {
                 {data.severity}
               </span>
               <span className="activity-alert-type">{formatAlertType(data.alert_type)}</span>
+              <span className="activity-raw-badge">Flink ML</span>
             </div>
             <div className="activity-details">
               <span className="activity-deviation">
@@ -146,10 +181,19 @@ export function PipelineActivityPage() {
           <div className="stat-value">{stats.decisions}</div>
           <div className="stat-label">Decisions</div>
         </div>
-        <div className="stat-card stat-anomalies">
+        <div className="stat-card stat-anomalies-raw">
           <div className="stat-icon">&#x1F6A8;</div>
+          <div className="stat-value">{stats.anomaliesRaw}</div>
+          <div className="stat-label">Raw Anomalies</div>
+        </div>
+        <div className="stat-card stat-anomalies">
+          <div className="stat-icon">
+            <svg className="gemini-icon-stat" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5z"/>
+            </svg>
+          </div>
           <div className="stat-value">{stats.anomalies}</div>
-          <div className="stat-label">Anomalies</div>
+          <div className="stat-label">AI Enriched</div>
         </div>
       </div>
 

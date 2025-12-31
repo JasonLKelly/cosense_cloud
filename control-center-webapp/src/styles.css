@@ -844,6 +844,28 @@ body {
   flex-shrink: 0;
 }
 
+.alert-ai-explanation {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-sm);
+  background: linear-gradient(135deg, rgba(74, 222, 128, 0.1) 0%, rgba(96, 165, 250, 0.1) 100%);
+  border-radius: 4px;
+  border: 1px solid rgba(74, 222, 128, 0.2);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.gemini-icon-inline {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  color: var(--robot-continue);
+  margin-top: 2px;
+}
+
 /* ============================================
    Zone Info
    ============================================ */
@@ -1394,4 +1416,51 @@ body {
   background: var(--bg-tertiary);
   border-radius: 3px;
   color: var(--text-muted);
+}
+
+/* Raw vs Enriched Anomaly Styles */
+.stat-card.stat-anomalies-raw {
+  border-left-color: var(--status-warning);
+}
+
+.activity-row.activity-anomaly.raw {
+  border-left-color: var(--status-warning);
+  background: rgba(250, 204, 21, 0.05);
+}
+
+.activity-row.activity-anomaly.enriched {
+  border-left-color: var(--robot-continue);
+  background: linear-gradient(90deg, rgba(74, 222, 128, 0.1) 0%, rgba(96, 165, 250, 0.1) 100%);
+}
+
+.activity-enriched-badge {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: linear-gradient(135deg, var(--robot-continue) 0%, #60a5fa 100%);
+  color: #000;
+  text-transform: uppercase;
+}
+
+.activity-raw-badge {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--status-warning);
+  color: #000;
+  text-transform: uppercase;
+}
+
+.gemini-icon-activity {
+  width: 16px;
+  height: 16px;
+  color: var(--robot-continue);
+}
+
+.gemini-icon-stat {
+  width: 24px;
+  height: 24px;
+  color: var(--robot-continue);
 }

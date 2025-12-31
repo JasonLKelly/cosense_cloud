@@ -19,39 +19,39 @@ CoSense Cloud implements **real-time AI alerting** that detects anomalies in str
 ```
                          DATA FLOW: Telemetry → Decisions → Anomalies → Explanations
 ┌─────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                    CONFLUENT CLOUD                                           │
-│                                                                                              │
-│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────────────────┐   │
-│  │   robot.    │     │ coordination│     │  anomaly.   │     │  anomaly.alerts.        │   │
-│  │  telemetry  │────▶│  .decisions │────▶│   alerts    │────▶│  enriched               │   │
-│  └─────────────┘     └─────────────┘     └─────────────┘     └─────────────────────────┘   │
+│                                    CONFLUENT CLOUD                                          │
+│                                                                                             │
+│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐     ┌─────────────────────────┐    │
+│  │   robot.    │     │ coordination│     │  anomaly.   │     │  anomaly.alerts.        │    │
+│  │  telemetry  │────▶│  .decisions │────▶│   alerts    │────▶│  enriched               │    │
+│  └─────────────┘     └─────────────┘     └─────────────┘     └─────────────────────────┘    │
 │        │                   │                   │                        │                   │
 │        │                   │                   │                        │                   │
 │        ▼                   ▼                   ▼                        ▼                   │
-│  ┌───────────────────────────────────────────────────────────────────────────────────────┐ │
-│  │                              FLINK SQL COMPUTE POOL                                    │ │
-│  │                                                                                        │ │
-│  │   ┌─────────────────┐    ┌─────────────────────┐    ┌─────────────────────────────┐  │ │
-│  │   │  QuixStreams    │    │  10s TUMBLE Window  │    │  ML_PREDICT                 │  │ │
-│  │   │  Python DSL     │    │  Aggregation        │    │  (Gemini via Vertex AI)     │  │ │
-│  │   │                 │    │                     │    │                             │  │ │
-│  │   │  • Risk calc    │    │  • decision_count   │    │  • Prompt construction      │  │ │
-│  │   │  • STOP/SLOW    │    │  • stop_count       │    │  • Context injection        │  │ │
-│  │   │  • Reason codes │    │  • sensor_errors    │    │  • Natural language output  │  │ │
-│  │   └─────────────────┘    └─────────────────────┘    └─────────────────────────────┘  │ │
-│  │                                    │                               │                   │ │
-│  │                                    ▼                               │                   │ │
-│  │                          ┌─────────────────────┐                   │                   │ │
-│  │                          │ ML_DETECT_ANOMALIES │                   │                   │ │
-│  │                          │                     │                   │                   │ │
-│  │                          │  ARIMA-based        │                   │                   │ │
-│  │                          │  • forecast_value   │───────────────────┘                   │ │
-│  │                          │  • confidence bounds│                                       │ │
-│  │                          │  • is_anomaly flag  │                                       │ │
-│  │                          └─────────────────────┘                                       │ │
-│  └───────────────────────────────────────────────────────────────────────────────────────┘ │
-│                                                                                              │
-└──────────────────────────────────────────────────────────────────────────────────────────────┘
+│  ┌───────────────────────────────────────────────────────────────────────────────────────┐  │
+│  │                              FLINK SQL COMPUTE POOL                                   |  │
+│  │                                                                                       │  │
+│  │   ┌─────────────────┐    ┌─────────────────────┐    ┌─────────────────────────────┐   │  │
+│  │   │  QuixStreams    │    │  10s TUMBLE Window  │    │  ML_PREDICT                 │   │  │
+│  │   │  Python DSL     │    │  Aggregation        │    │  (Gemini via Vertex AI)     │   │  │
+│  │   │                 │    │                     │    │                             │   │  │
+│  │   │  • Risk calc    │    │  • decision_count   │    │  • Prompt construction      │   │  │
+│  │   │  • STOP/SLOW    │    │  • stop_count       │    │  • Context injection        │   │  │
+│  │   │  • Reason codes │    │  • sensor_errors    │    │  • Natural language output  │   │  │
+│  │   └─────────────────┘    └─────────────────────┘    └─────────────────────────────┘   │  │
+│  │                                    │                               │                  │  │
+│  │                                    ▼                               │                  │  │
+│  │                          ┌─────────────────────┐                   │                  │  │
+│  │                          │ ML_DETECT_ANOMALIES │                   │                  │  │
+│  │                          │                     │                   │                  │  │
+│  │                          │  ARIMA-based        │                   │                  │  │
+│  │                          │  • forecast_value   │───────────────────┘                  │  │
+│  │                          │  • confidence bounds│                                      │  │
+│  │                          │  • is_anomaly flag  │                                      │  │
+│  │                          └─────────────────────┘                                      │  │
+│  └───────────────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                             │
+└─────────────────────────────────────────────────────────────────────────────────────────────┘
                                               │
                                               ▼
                                     ┌───────────────────┐
