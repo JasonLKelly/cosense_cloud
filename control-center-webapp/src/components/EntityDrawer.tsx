@@ -19,10 +19,6 @@ export function EntityDrawer({ robot, onClose, onStop, onStart }: EntityDrawerPr
 
           <div className="entity-info">
             <div className="entity-info-row">
-              <span className="entity-info-label">Zone</span>
-              <span className="entity-info-value">{robot.zone_id}</span>
-            </div>
-            <div className="entity-info-row">
               <span className="entity-info-label">Position</span>
               <span className="entity-info-value">({robot.x.toFixed(1)}, {robot.y.toFixed(1)})</span>
             </div>

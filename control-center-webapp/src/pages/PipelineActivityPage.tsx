@@ -116,7 +116,6 @@ export function PipelineActivityPage() {
                   {data.deviation_percent.toFixed(0)}%
                 </span>
                 {data.robot_id && <span className="activity-robot-ref">{data.robot_id}</span>}
-                <span className="activity-zone-ref">{data.zone_id}</span>
               </div>
             )}
           </div>
