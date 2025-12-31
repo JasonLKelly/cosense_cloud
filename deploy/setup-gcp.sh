@@ -63,6 +63,12 @@ gcloud projects add-iam-policy-binding "$PROJECT_ID" \
   --role="roles/artifactregistry.writer" \
   --quiet >/dev/null
 
+# Vertex AI access (for Cloud Run to call Gemini)
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+  --member="serviceAccount:${PROJECT_NUMBER}-compute@developer.gserviceaccount.com" \
+  --role="roles/aiplatform.user" \
+  --quiet >/dev/null
+
 echo "  Permissions granted"
 
 echo ""
