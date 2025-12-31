@@ -110,6 +110,12 @@ export function useSimState(options: UseSimStateOptions = {}) {
     setAnomalies(prev => prev.filter(a => a.alert_id !== alertId))
   }, [])
 
+  const clearAllAlerts = useCallback(async () => {
+    await fetch(`${API_URL}/anomalies`, { method: 'DELETE' })
+    // Optimistically clear local state
+    setAnomalies([])
+  }, [])
+
   return {
     state,
     decisions,
@@ -123,5 +129,6 @@ export function useSimState(options: UseSimStateOptions = {}) {
     stopRobot,
     startRobot,
     dismissAlert,
+    clearAllAlerts,
   }
 }

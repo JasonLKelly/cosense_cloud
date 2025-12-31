@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Robot, AnomalyAlert, API_URL, CONFLUENT_URL, POLL_INTERVAL } from './types'
 import { useSimState } from './hooks/useSimState'
 import { useGemini } from './hooks/useGemini'
@@ -27,6 +27,7 @@ export default function App() {
     stopRobot,
     startRobot,
     dismissAlert,
+    clearAllAlerts,
   } = useSimState({ pollDecisions, pollAnomalies, pollInterval })
 
   const {
@@ -47,6 +48,17 @@ export default function App() {
 
   // Get live robot data for selected robot
   const selectedRobot = state?.robots.find(r => r.robot_id === selectedRobotId) || null
+
+  // ESC key closes robot panel
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedRobotId) {
+        setSelectedRobotId(null)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedRobotId])
 
   const handleRobotClick = (robot: Robot) => {
     setSelectedRobotId(robot.robot_id)
@@ -169,6 +181,7 @@ export default function App() {
           onRobotHover={setHoveredRobotId}
           onExplainAlert={handleExplainAlert}
           onDismissAlert={dismissAlert}
+          onClearAllAlerts={clearAllAlerts}
         />
       </div>
 

@@ -780,6 +780,33 @@ body {
   color: var(--status-error);
 }
 
+.drawer-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.drawer-title-row .drawer-title {
+  flex: 1;
+}
+
+.btn-clear-all {
+  font-size: 11px;
+  padding: 2px 8px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-clear-all:hover {
+  background: var(--status-error);
+  border-color: var(--status-error);
+  color: #000;
+}
+
 .alert-severity {
   font-size: 10px;
   font-weight: 700;

@@ -14,6 +14,7 @@ interface MetricsPanelProps {
   onRobotHover: (robotId: string | null) => void
   onExplainAlert?: (alert: AnomalyAlert) => void
   onDismissAlert?: (alertId: string) => void
+  onClearAllAlerts?: () => void
 }
 
 export function MetricsPanel({
@@ -29,6 +30,7 @@ export function MetricsPanel({
   onRobotHover,
   onExplainAlert,
   onDismissAlert,
+  onClearAllAlerts,
 }: MetricsPanelProps) {
   const [decisionsExpanded, setDecisionsExpanded] = useState(true)
   const [robotsExpanded, setRobotsExpanded] = useState(true)
@@ -229,16 +231,30 @@ export function MetricsPanel({
 
       {/* AI Alerts - Flink-detected anomalies */}
       <div className="drawer-section">
-        <h4
-          className="drawer-title collapsible"
-          onClick={handleAnomaliesToggle}
-        >
-          <span>AI Alerts</span>
-          {anomalies.length > 0 && (
-            <span className="alert-count">{anomalies.length}</span>
+        <div className="drawer-title-row">
+          <h4
+            className="drawer-title collapsible"
+            onClick={handleAnomaliesToggle}
+          >
+            <span>AI Alerts</span>
+            {anomalies.length > 0 && (
+              <span className="alert-count">{anomalies.length}</span>
+            )}
+            <span className="collapse-icon">{anomaliesExpanded ? '▼' : '▶'}</span>
+          </h4>
+          {anomalies.length > 0 && onClearAllAlerts && (
+            <button
+              className="btn-clear-all"
+              onClick={(e) => {
+                e.stopPropagation()
+                onClearAllAlerts()
+              }}
+              title="Clear all alerts"
+            >
+              Clear All
+            </button>
           )}
-          <span className="collapse-icon">{anomaliesExpanded ? '▼' : '▶'}</span>
-        </h4>
+        </div>
         {anomaliesExpanded && (
           <div className="alert-list">
             {sortedAnomalies.length === 0 && (

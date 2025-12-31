@@ -66,6 +66,14 @@ class StateBuffer:
         """Get anomalies that haven't been dismissed."""
         return [a for a in self.anomaly_alerts if a.get("alert_id") not in self.dismissed_alert_ids]
 
+    def clear_all_anomalies(self):
+        """Clear all anomaly alerts."""
+        # Mark all current alerts as dismissed
+        for alert in self.anomaly_alerts:
+            if alert.get("alert_id"):
+                self.dismissed_alert_ids.add(alert.get("alert_id"))
+        self.anomaly_alerts.clear()
+
 
 buffer = StateBuffer()
 consumer: Consumer | None = None
@@ -281,6 +289,13 @@ async def get_robot_anomalies(robot_id: str, limit: int = 10):
     """Get recent anomaly alerts for a specific robot."""
     robot_anomalies = [a for a in buffer.get_active_anomalies() if a.get("robot_id") == robot_id]
     return robot_anomalies[-limit:]
+
+
+@app.delete("/anomalies")
+async def clear_all_anomalies():
+    """Clear all anomaly alerts."""
+    buffer.clear_all_anomalies()
+    return {"status": "cleared"}
 
 
 @app.delete("/anomalies/{alert_id}")
@@ -551,40 +566,22 @@ async def create_mock_anomaly(request: MockAnomalyRequest | None = None):
     req = request or MockAnomalyRequest()
     now_ms = int(time.time() * 1000)
 
-    # Generate context and AI explanation based on alert type
+    # Generate context based on alert type
     contexts = {
         "DECISION_RATE_SPIKE": {
-            "context": "Decision rate exceeded normal bounds in the warehouse",
-            "ai_explanation": (
-                "The warehouse is experiencing an unusual surge in safety interventions. "
-                "The decision rate has spiked significantly above the expected baseline, "
-                "which may indicate increased congestion or environmental changes. "
-                "Recommend monitoring conditions and considering temporary capacity reduction."
-            ),
+            "context": "Decision rate exceeded normal bounds - 15 decisions in last 30s vs expected 5",
             "metric_name": "decision_count",
             "actual_value": 15.0,
             "forecast_value": 5.2,
         },
         "REPEATED_ROBOT_STOP": {
-            "context": f"Robot {req.robot_id or 'robot-1'} stopped multiple times in 30s",
-            "ai_explanation": (
-                f"Robot {req.robot_id or 'robot-1'} has been stopped 3 times in the last 30 seconds. "
-                "This pattern suggests either a persistent obstruction in its path or "
-                "sensor calibration issues. Recommend visual inspection of the robot's route "
-                "and checking for humans lingering in high-traffic areas."
-            ),
+            "context": f"Robot {req.robot_id or 'robot-1'} stopped 3 times in last 30s",
             "metric_name": "stop_count_30s",
             "actual_value": 3.0,
             "forecast_value": 0.5,
         },
         "SENSOR_DISAGREEMENT_SPIKE": {
-            "context": "Multiple sensor disagreements detected in the warehouse",
-            "ai_explanation": (
-                "Sensor disagreement events have spiked in the warehouse. "
-                "When ultrasonic and BLE sensors report conflicting proximity data, "
-                "it may indicate environmental interference (dust, reflective surfaces) "
-                "or sensor degradation. Recommend sensor diagnostics for affected robots."
-            ),
+            "context": "4 sensor disagreements detected in last 30s vs expected <1",
             "metric_name": "sensor_disagreement_count",
             "actual_value": 4.0,
             "forecast_value": 0.8,
@@ -604,7 +601,6 @@ async def create_mock_anomaly(request: MockAnomalyRequest | None = None):
         "upper_bound": alert_data["forecast_value"] * 1.5,
         "severity": req.severity,
         "context": alert_data["context"],
-        "ai_explanation": alert_data["ai_explanation"],
     }
 
     buffer.add_anomaly_alert(alert)

@@ -236,10 +236,9 @@ def get_anomalies(
     alert_type: str | None = None,
     limit: int = 10
 ) -> dict:
-    """Get recent anomaly alerts detected by the Flink AI pipeline.
+    """Get recent anomaly alerts detected by the stream processor.
 
-    Anomalies are detected using ML_DETECT_ANOMALIES (ARIMA) and enriched
-    with AI explanations via ML_PREDICT (Gemini).
+    Anomalies are pattern-based detections from the coordination decision stream.
 
     Args:
         robot_id: Filter by robot (optional)
@@ -248,7 +247,7 @@ def get_anomalies(
         limit: Maximum number of alerts to return (default 10)
 
     Returns:
-        List of recent anomaly alerts with AI explanations
+        List of recent anomaly alerts with context
     """
     anomalies = _ctx.anomaly_alerts
 
@@ -273,7 +272,6 @@ def get_anomalies(
                 "severity": a.get("severity"),
                 "robot_id": a.get("robot_id"),
                 "context": a.get("context"),
-                "ai_explanation": a.get("ai_explanation"),
                 "detected_at": a.get("detected_at"),
             }
             for a in recent
@@ -471,7 +469,7 @@ QUERY TOOLS:
 - get_robot_state: Get a robot's position, velocity, sensors, and trajectory
 - get_nearby_entities: Find humans and robots near a specific robot
 - get_decisions: Get recent coordination decisions (STOP, SLOW, CONTINUE)
-- get_anomalies: Get AI-detected anomalies from Flink pipeline (spikes, patterns)
+- get_anomalies: Get anomaly alerts from stream processor (spikes, patterns)
 - get_scenario_status: Get simulation status (running, entity counts, toggles)
 - analyze_patterns: Analyze decision patterns and trends
 
@@ -502,7 +500,7 @@ RULES:
 When answering questions:
 - Explain WHY things happened by citing reason_codes and sensor data
 - For patterns, use analyze_patterns and look at distributions
-- For anomalies, include the AI explanation from the alert
+- For anomalies, analyze the alert context and use get_robot_state/get_decisions to explain what's happening
 - Always ground your answer in the data you retrieved"""
 
 

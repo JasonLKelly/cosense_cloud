@@ -14,7 +14,7 @@ interface AskGeminiProps {
 
 const MIN_HEIGHT = 100
 const MAX_HEIGHT = 600
-const DEFAULT_HEIGHT = 240
+const DEFAULT_HEIGHT = 360
 
 export function AskGemini({
   loading,
