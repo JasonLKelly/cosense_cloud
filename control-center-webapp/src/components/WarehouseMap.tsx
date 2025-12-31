@@ -48,9 +48,10 @@ function ObstacleRect({ obstacle, scale }: { obstacle: MapObstacle; scale: numbe
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontSize: 9,
+        fontSize: 12,
+        fontWeight: 600,
         color: '#fff',
-        textShadow: '0 0 2px rgba(0,0,0,0.8)',
+        textShadow: '0 1px 3px rgba(0,0,0,0.9), 0 0 6px rgba(0,0,0,0.7)',
         overflow: 'hidden',
         pointerEvents: 'none',
       }}
@@ -232,13 +233,14 @@ export function WarehouseMapView({
           >
             <div style={{
               position: 'absolute',
-              top: -18,
+              top: -22,
               left: '50%',
               transform: 'translateX(-50%)',
-              fontSize: 9,
+              fontSize: 12,
               color: '#4ade80',
               whiteSpace: 'nowrap',
-              fontWeight: 600,
+              fontWeight: 700,
+              textShadow: '0 1px 3px rgba(0,0,0,0.9), 0 0 6px rgba(0,0,0,0.7)',
             }}>
               {waypoint.name}
             </div>
