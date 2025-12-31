@@ -159,6 +159,12 @@ body {
   color: #000;
 }
 
+.btn-ask-gemini {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .btn-secondary {
   background: var(--bg-tertiary);
   color: var(--text-primary);
@@ -282,10 +288,11 @@ body {
 }
 
 .drawer-title {
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
   text-transform: uppercase;
-  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  color: var(--text-primary);
   margin: 0 0 var(--spacing-sm) 0;
 }
 
@@ -763,6 +770,36 @@ body {
   background: rgba(250, 204, 21, 0.05);
 }
 
+.system-normal {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  background: linear-gradient(135deg, rgba(74, 222, 128, 0.15) 0%, rgba(74, 222, 128, 0.05) 100%);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  border-radius: 8px;
+}
+
+.system-normal-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: var(--status-success);
+  color: #000;
+  border-radius: 50%;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.system-normal-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--status-success);
+  letter-spacing: 0.5px;
+}
+
 .alert-item-header {
   display: flex;
   align-items: center;
@@ -909,11 +946,13 @@ body {
 }
 
 .gemini-icon-inline {
-  width: 12px;
-  height: 12px;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
-  color: var(--robot-continue);
-  margin-top: 2px;
+}
+
+.btn-ask-gemini .gemini-icon-inline {
+  color: #000;
 }
 
 /* ============================================

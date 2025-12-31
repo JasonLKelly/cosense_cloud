@@ -136,11 +136,18 @@ export function AskGemini({
               disabled={loading}
             />
             <button
-              className="btn btn-primary"
+              className="btn btn-primary btn-ask-gemini"
               onClick={handleSubmit}
               disabled={loading || !question.trim()}
             >
-              {loading ? '...' : 'Ask'}
+              {loading ? '...' : (
+                <>
+                  <svg className="gemini-icon-inline" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5z"/>
+                  </svg>
+                  Ask Gemini
+                </>
+              )}
             </button>
             {(response || error) && (
               <button className="btn btn-secondary" onClick={onClear}>
