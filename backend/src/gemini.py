@@ -862,7 +862,7 @@ async def generate_performance_summary(
         try:
             response = await asyncio.to_thread(
                 lambda: client.models.generate_content(
-                    model=f"models/{settings.gemini_model}",
+                    model=settings.gemini_model,
                     contents=prompt,
                 )
             )
