@@ -84,9 +84,35 @@ def get_robot_state(robot_id: str, window_sec: int = 30) -> dict:
     Returns:
         Current position, velocity, sensors, and recent trajectory points
     """
-    # Get current state
+    import httpx
+
+    # Get current state from Kafka buffer
     current = _ctx.current_state.get(robot_id)
+
+    # Fallback: fetch from simulator if not in Kafka buffer
     if not current:
+        try:
+            with httpx.Client(timeout=2.0) as client:
+                resp = client.get(f"{_ctx.simulator_url}/state")
+                sim_state = resp.json()
+                for robot in sim_state.get("robots", []):
+                    if robot.get("robot_id") == robot_id:
+                        return {
+                            "robot_id": robot_id,
+                            "current": {
+                                "x": robot.get("x"),
+                                "y": robot.get("y"),
+                                "velocity": robot.get("velocity"),
+                                "heading": robot.get("heading"),
+                                "motion_state": robot.get("motion_state"),
+                                "commanded_action": robot.get("commanded_action"),
+                            },
+                            "sensors": {},
+                            "trajectory": [],
+                            "source": "simulator",
+                        }
+        except Exception:
+            pass
         return {"error": f"Robot {robot_id} not found", "robot_id": robot_id}
 
     # Get historical states
@@ -112,6 +138,7 @@ def get_robot_state(robot_id: str, window_sec: int = 30) -> dict:
             "ble_distance_m": current.get("ble_distance_m"),
         },
         "trajectory": trajectory,
+        "source": "kafka",
     }
 
 
