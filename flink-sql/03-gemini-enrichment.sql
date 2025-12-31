@@ -45,7 +45,6 @@ CREATE TABLE anomaly_alerts_enriched (
     alert_id STRING,
     alert_type STRING,
     detected_at TIMESTAMP(3),
-    zone_id STRING,
     robot_id STRING,
     metric_name STRING,
     actual_value DOUBLE,
@@ -74,7 +73,6 @@ SELECT
     a.alert_id,
     a.alert_type,
     a.detected_at,
-    a.zone_id,
     a.robot_id,
     a.metric_name,
     a.actual_value,
@@ -94,8 +92,7 @@ LATERAL TABLE(
             CASE WHEN a.robot_id IS NOT NULL
                 THEN CONCAT('. Robot: ', a.robot_id)
                 ELSE ''
-            END,
-            '. Zone: ', a.zone_id
+            END
         )
     )
 ) AS g(explanation);

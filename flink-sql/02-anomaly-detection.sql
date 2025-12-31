@@ -19,7 +19,6 @@ CREATE TABLE anomaly_alerts (
     alert_id STRING,
     alert_type STRING,
     detected_at TIMESTAMP(3),
-    zone_id STRING,
     robot_id STRING,
     metric_name STRING,
     actual_value DOUBLE,
@@ -50,7 +49,6 @@ SELECT
     window_start,
     window_end,
     window_time,
-    zone_id,
     COUNT(*) AS decision_count,
     COUNT(CASE WHEN `action` = 'STOP' THEN 1 END) AS stop_count,
     COUNT(CASE WHEN `action` = 'SLOW' THEN 1 END) AS slow_count,
@@ -60,7 +58,7 @@ SELECT
 FROM TABLE(
     TUMBLE(TABLE coordination_decisions, DESCRIPTOR(event_time), INTERVAL '10' SECOND)
 )
-GROUP BY window_start, window_end, window_time, zone_id;
+GROUP BY window_start, window_end, window_time;
 
 -- ----------------------------------------------------------------------------
 -- View: Anomaly Detection on Decision Rate
@@ -69,7 +67,6 @@ GROUP BY window_start, window_end, window_time, zone_id;
 CREATE VIEW decision_rate_anomalies AS
 SELECT
     window_time,
-    zone_id,
     decision_count,
     stop_count,
     ML_DETECT_ANOMALIES(
@@ -97,14 +94,13 @@ SELECT
     window_end,
     window_time,
     robot_id,
-    zone_id,
     COUNT(*) AS stop_count,
     LISTAGG(primary_reason, ', ') AS reasons
 FROM TABLE(
     TUMBLE(TABLE coordination_decisions, DESCRIPTOR(event_time), INTERVAL '30' SECOND)
 )
 WHERE `action` = 'STOP'
-GROUP BY window_start, window_end, window_time, robot_id, zone_id
+GROUP BY window_start, window_end, window_time, robot_id
 HAVING COUNT(*) >= 2;  -- Robot stopped 2+ times in 30 seconds
 
 -- ----------------------------------------------------------------------------
@@ -113,10 +109,9 @@ HAVING COUNT(*) >= 2;  -- Robot stopped 2+ times in 30 seconds
 -- ----------------------------------------------------------------------------
 INSERT INTO anomaly_alerts
 SELECT
-    CONCAT('dra-', CAST(UNIX_TIMESTAMP(window_time) AS STRING), '-', zone_id) AS alert_id,
+    CONCAT('dra-', CAST(UNIX_TIMESTAMP(window_time) AS STRING)) AS alert_id,
     'DECISION_RATE_SPIKE' AS alert_type,
     window_time AS detected_at,
-    zone_id,
     CAST(NULL AS STRING) AS robot_id,
     'decision_count' AS metric_name,
     CAST(decision_count AS DOUBLE) AS actual_value,
@@ -144,7 +139,6 @@ SELECT
     CONCAT('rrs-', CAST(UNIX_TIMESTAMP(window_time) AS STRING), '-', robot_id) AS alert_id,
     'REPEATED_ROBOT_STOP' AS alert_type,
     window_time AS detected_at,
-    zone_id,
     robot_id,
     'stop_count_30s' AS metric_name,
     CAST(stop_count AS DOUBLE) AS actual_value,
@@ -166,10 +160,9 @@ FROM robot_stop_frequency;
 -- ----------------------------------------------------------------------------
 INSERT INTO anomaly_alerts
 SELECT
-    CONCAT('sd-', CAST(UNIX_TIMESTAMP(window_time) AS STRING), '-', zone_id) AS alert_id,
+    CONCAT('sd-', CAST(UNIX_TIMESTAMP(window_time) AS STRING)) AS alert_id,
     'SENSOR_DISAGREEMENT_SPIKE' AS alert_type,
     window_time AS detected_at,
-    zone_id,
     CAST(NULL AS STRING) AS robot_id,
     'sensor_disagreement_count' AS metric_name,
     CAST(sensor_disagreement_count AS DOUBLE) AS actual_value,
