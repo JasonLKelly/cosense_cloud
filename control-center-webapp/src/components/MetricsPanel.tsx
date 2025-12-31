@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Zone, Decision, Robot, AnomalyAlert } from '../types'
+import { SimState, Decision, Robot, AnomalyAlert } from '../types'
 
 interface MetricsPanelProps {
-  zone: Zone | null
+  simState: SimState | null
   robots: Robot[]
   decisions: Decision[]
   anomalies: AnomalyAlert[]
@@ -16,7 +16,7 @@ interface MetricsPanelProps {
 }
 
 export function MetricsPanel({
-  zone,
+  simState,
   robots,
   decisions,
   anomalies,
@@ -64,28 +64,24 @@ export function MetricsPanel({
 
   return (
     <div className="right-drawer">
-      {/* Zone Stats */}
+      {/* Stats */}
       <div className="drawer-section">
-        <h4 className="drawer-title">Zone Stats</h4>
-        {zone ? (
+        <h4 className="drawer-title">Stats</h4>
+        {simState ? (
           <div className="zone-stats">
             <div className="zone-stat">
-              <div className="zone-stat-value">{zone.robot_count}</div>
+              <div className="zone-stat-value">{simState.robot_count}</div>
               <div className="zone-stat-label">Robots</div>
             </div>
             <div className="zone-stat">
-              <div className="zone-stat-value">{zone.human_count}</div>
+              <div className="zone-stat-value">{simState.human_count}</div>
               <div className="zone-stat-label">Humans</div>
             </div>
             <div className="zone-stat">
               <div className="zone-stat-value">
-                {(zone.congestion_level * 100).toFixed(0)}%
+                {(simState.congestion_level * 100).toFixed(0)}%
               </div>
               <div className="zone-stat-label">Congestion</div>
-            </div>
-            <div className="zone-stat">
-              <div className="zone-stat-value">{zone.zone_id}</div>
-              <div className="zone-stat-label">Zone</div>
             </div>
           </div>
         ) : (
@@ -99,7 +95,7 @@ export function MetricsPanel({
         <div className="toggle-row">
           <span>Visibility</span>
           <select
-            value={zone?.visibility || 'normal'}
+            value={simState?.visibility || 'normal'}
             onChange={(e) =>
               onToggleVisibility(e.target.value as 'normal' | 'degraded' | 'poor')
             }
@@ -119,7 +115,7 @@ export function MetricsPanel({
         <div className="toggle-row">
           <span>Connectivity</span>
           <select
-            value={zone?.connectivity || 'normal'}
+            value={simState?.connectivity || 'normal'}
             onChange={(e) =>
               onToggleConnectivity(e.target.value as 'normal' | 'degraded' | 'offline')
             }

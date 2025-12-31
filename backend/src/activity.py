@@ -101,7 +101,6 @@ async def emit_decision(robot_id: str, action: str, reason_codes: list[str], ris
 async def emit_anomaly(
     alert_type: str,
     severity: str,
-    zone_id: str,
     robot_id: str | None,
     actual_value: float,
     forecast_value: float,
@@ -114,7 +113,6 @@ async def emit_anomaly(
         data={
             "alert_type": alert_type,
             "severity": severity,
-            "zone_id": zone_id,
             "robot_id": robot_id,
             "actual_value": actual_value,
             "forecast_value": forecast_value,

@@ -8,7 +8,7 @@ class QuestionType(str, Enum):
     """The three supported operator questions."""
 
     WHY_ACTION = "WHY_ACTION"  # "Why did robot X stop/slow/reroute?"
-    ZONE_STATUS = "ZONE_STATUS"  # "What's happening in Zone C?"
+    WAREHOUSE_STATUS = "WAREHOUSE_STATUS"  # "What's happening in the warehouse?"
     PATTERN_CHECK = "PATTERN_CHECK"  # "Is this isolated or part of a pattern?"
 
 
@@ -29,7 +29,6 @@ class OperatorQuestion(BaseModel):
 
     # Context for the question
     robot_id: str | None = Field(None, description="Robot ID if question is about a specific robot")
-    zone_id: str | None = Field(None, description="Zone ID if question is about a specific zone")
     decision_id: str | None = Field(None, description="Decision ID if asking about a specific event")
 
     class Config:
@@ -38,7 +37,6 @@ class OperatorQuestion(BaseModel):
                 "question_type": "WHY_ACTION",
                 "raw_text": "Why did robot-1 stop?",
                 "robot_id": "robot-1",
-                "zone_id": "zone-c",
                 "decision_id": "dec-1703001234567-robot-1",
             }
         }

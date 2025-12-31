@@ -94,12 +94,11 @@ def apply_decision_to_simulator(decision: dict) -> bool:
 # In-memory state for windowed joins
 # In production, QuixStreams would handle this with RocksDB
 class StateStore:
-    """Simple in-memory state for robot/human/zone data."""
+    """Simple in-memory state for robot/human data."""
 
     def __init__(self):
         self.robots: dict[str, dict] = {}  # robot_id -> latest telemetry
         self.humans: dict[str, dict] = {}  # human_id -> latest telemetry
-        self.zones: dict[str, dict] = {}   # zone_id -> latest context
         self.last_decisions: dict[str, dict] = {}  # robot_id -> last decision
         self.last_emit_time: float = 0
 
@@ -108,9 +107,6 @@ class StateStore:
 
     def update_human(self, data: dict):
         self.humans[data["human_id"]] = data
-
-    def update_zone(self, data: dict):
-        self.zones[data["zone_id"]] = data
 
     def get_nearest_human(self, robot: dict) -> dict | None:
         """Find nearest human to a robot."""
@@ -121,8 +117,6 @@ class StateStore:
         nearest = None
 
         for human in self.humans.values():
-            if human.get("zone_id") != robot.get("zone_id"):
-                continue
             dist = math.sqrt(
                 (human["x"] - robot["x"]) ** 2 +
                 (human["y"] - robot["y"]) ** 2
@@ -132,9 +126,6 @@ class StateStore:
                 nearest = human
 
         return nearest
-
-    def get_zone(self, zone_id: str) -> dict | None:
-        return self.zones.get(zone_id)
 
     def should_emit(self) -> bool:
         """Check if enough time has passed to emit state."""
@@ -160,18 +151,16 @@ def process_robot_telemetry(value: dict) -> dict | None:
     state.update_robot(value)
 
     robot_id = value["robot_id"]
-    zone_id = value.get("zone_id", "zone-c")
 
-    # Find nearest human and zone context
+    # Find nearest human
     nearest_human = state.get_nearest_human(value)
-    zone = state.get_zone(zone_id)
 
     # Assess risk
-    assessment = assess_risk(value, nearest_human, zone)
+    assessment = assess_risk(value, nearest_human)
 
     # Only emit decision if action changed or is not CONTINUE
     if assessment.action != Action.CONTINUE or state.decision_changed(robot_id, assessment.action):
-        decision = create_decision_event(assessment, zone_id)
+        decision = create_decision_event(assessment)
         state.last_decisions[robot_id] = decision
 
         # Apply decision to simulator
@@ -187,15 +176,9 @@ def process_human_telemetry(value: dict) -> None:
     state.update_human(value)
 
 
-def process_zone_context(value: dict) -> None:
-    """Process zone context (just update state)."""
-    state.update_zone(value)
-
-
 def create_coordination_state(robot: dict) -> dict:
     """Create coordination state event for a robot."""
     nearest_human = state.get_nearest_human(robot)
-    zone = state.get_zone(robot.get("zone_id", "zone-c"))
 
     nearest_human_distance = None
     relative_velocity = None
@@ -210,12 +193,11 @@ def create_coordination_state(robot: dict) -> dict:
         # Simplified relative velocity (just magnitude difference for now)
         relative_velocity = robot.get("velocity", 0) + nearest_human.get("velocity", 0)
 
-    assessment = assess_risk(robot, nearest_human, zone)
+    assessment = assess_risk(robot, nearest_human)
 
     return {
         "robot_id": robot["robot_id"],
         "timestamp": int(time.time() * 1000),
-        "zone_id": robot.get("zone_id", "zone-c"),
         "x": robot["x"],
         "y": robot["y"],
         "velocity": robot["velocity"],
@@ -224,9 +206,6 @@ def create_coordination_state(robot: dict) -> dict:
         "nearest_human_id": nearest_human_id,
         "nearest_human_distance": round(nearest_human_distance, 2) if nearest_human_distance else None,
         "relative_velocity": round(relative_velocity, 2) if relative_velocity else None,
-        "visibility": zone.get("visibility", "normal") if zone else "normal",
-        "congestion_level": zone.get("congestion_level", 0) if zone else 0,
-        "connectivity": zone.get("connectivity", "normal") if zone else "normal",
         "risk_score": assessment.risk_score,
     }
 
@@ -273,7 +252,6 @@ def main():
     # Input topics (with prefix support)
     robot_topic = app.topic(settings.topic(settings.robot_telemetry_topic), value_deserializer="json", config=topic_config)
     human_topic = app.topic(settings.topic(settings.human_telemetry_topic), value_deserializer="json", config=topic_config)
-    zone_topic = app.topic(settings.topic(settings.zone_context_topic), value_deserializer="json", config=topic_config)
 
     # Output topics (with prefix support)
     decisions_topic = app.topic(settings.topic(settings.coordination_decisions_topic), value_serializer="json", config=topic_config)
@@ -305,10 +283,6 @@ def main():
     # Process human telemetry (just update state)
     sdf_humans = app.dataframe(human_topic)
     sdf_humans.apply(lambda value: state.update_human(value))
-
-    # Process zone context (just update state)
-    sdf_zones = app.dataframe(zone_topic)
-    sdf_zones.apply(lambda value: state.update_zone(value))
 
     logger.info("Stream processor configured, starting...")
     app.run()

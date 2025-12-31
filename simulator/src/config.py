@@ -25,7 +25,6 @@ class Settings(BaseSettings):
 
     # Simulation
     tick_rate_hz: float = 10.0
-    zone_id: str = "zone-c"
 
     # World size (meters)
     world_width: float = 50.0

@@ -27,7 +27,6 @@ class Settings(BaseSettings):
     # Topics to consume (base names)
     coordination_state_topic: str = "coordination.state"
     coordination_decisions_topic: str = "coordination.decisions"
-    zone_context_topic: str = "zone.context"
     anomaly_alerts_topic: str = "anomaly.alerts.enriched"
 
     # Simulator service (for forwarding commands)

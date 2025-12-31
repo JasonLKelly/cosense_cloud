@@ -27,7 +27,6 @@ class Settings(BaseSettings):
     # Topics (base names - use topic() method for prefixed names)
     robot_telemetry_topic: str = "robot.telemetry"
     human_telemetry_topic: str = "human.telemetry"
-    zone_context_topic: str = "zone.context"
     coordination_state_topic: str = "coordination.state"
     coordination_decisions_topic: str = "coordination.decisions"
 

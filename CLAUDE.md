@@ -81,9 +81,9 @@ KAFKA_SASL_MECHANISM=PLAIN
 
 The system consists of four main services communicating via Kafka:
 
-1. **simulator/** - Headless World Engine that generates robot/human telemetry for Zone C. Emits `robot.telemetry`, `human.telemetry`, `zone.context` events. Provides REST endpoints for scenario control (`/scenario/start`, `/scenario/toggle`).
+1. **simulator/** - Headless World Engine that generates robot/human telemetry for a warehouse environment. Emits `robot.telemetry` and `human.telemetry` events. Provides REST endpoints for scenario control (`/scenario/start`, `/scenario/toggle`).
 
-2. **stream-processor/** - Consumes telemetry via Confluent Platform, performs windowed joins (robot ↔ human ↔ zone), computes risk scores, and emits `coordination.state` and `coordination.decisions` with reason codes. Pure rules + thresholds, no ML.
+2. **stream-processor/** - Consumes telemetry via Confluent Platform, performs windowed joins (robot ↔ human), computes risk scores, and emits `coordination.state` and `coordination.decisions` with reason codes. Pure rules + thresholds, no ML.
 
 3. **backend/** - HTTP API layer (port 8080) connecting the UI to Kafka and Gemini. Houses the Gemini operator copilot with tool-calling capabilities. Tools query Kafka history and simulator state.
 
@@ -91,7 +91,7 @@ The system consists of four main services communicating via Kafka:
 
 ### Gemini Copilot Tools
 
-The copilot uses 11 tools that Gemini calls automatically via the `google-genai` SDK:
+The copilot uses 10 tools that Gemini calls automatically via the `google-genai` SDK:
 
 **Query Tools:**
 | Tool | Purpose |
@@ -99,7 +99,6 @@ The copilot uses 11 tools that Gemini calls automatically via the `google-genai`
 | `get_robot_state` | Robot position, velocity, sensors, trajectory |
 | `get_nearby_entities` | Humans/robots near a specific robot |
 | `get_decisions` | Recent coordination decisions with filters |
-| `get_zone_context` | Zone visibility, congestion, entity counts |
 | `get_scenario_status` | Simulation state and toggles |
 | `analyze_patterns` | Aggregated stats for pattern detection |
 
@@ -120,11 +119,11 @@ The copilot uses 11 tools that Gemini calls automatically via the `google-genai`
 
 **Decision Actions:** `SLOW`, `STOP`, `REROUTE`
 
-**Reason Codes:** `CLOSE_PROXIMITY`, `HIGH_RELATIVE_SPEED`, `LOW_VISIBILITY`, `HIGH_CONGESTION`, `BLE_PROXIMITY_DETECTED`, `SENSOR_DISAGREEMENT`
+**Reason Codes:** `CLOSE_PROXIMITY`, `HIGH_RELATIVE_SPEED`, `BLE_PROXIMITY_DETECTED`, `SENSOR_DISAGREEMENT`
 
 **Example Operator Questions:**
 - "Why did robot-1 stop?"
-- "What's happening in Zone C?"
+- "What's happening in the warehouse?"
 - "Is this an isolated event, or part of a pattern?"
 - Any free-form question — Gemini decides which tools to call
 

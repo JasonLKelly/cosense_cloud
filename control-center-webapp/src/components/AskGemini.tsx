@@ -146,7 +146,7 @@ export function AskGemini({
               ref={inputRef}
               type="text"
               className="gemini-input"
-              placeholder="Ask about robots, decisions, or zone status..."
+              placeholder="Ask about robots, decisions, or what's happening..."
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               onKeyDown={handleKeyDown}

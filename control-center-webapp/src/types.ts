@@ -2,7 +2,6 @@
 
 export interface Robot {
   robot_id: string
-  zone_id: string
   x: number
   y: number
   velocity: number
@@ -15,14 +14,15 @@ export interface Robot {
 
 export interface Human {
   human_id: string
-  zone_id: string
   x: number
   y: number
   velocity: number
 }
 
-export interface Zone {
-  zone_id: string
+export interface SimState {
+  sim_time: number
+  running: boolean
+  map_id: string
   width: number
   height: number
   visibility: 'normal' | 'degraded' | 'poor'
@@ -30,12 +30,6 @@ export interface Zone {
   congestion_level: number
   robot_count: number
   human_count: number
-}
-
-export interface SimState {
-  sim_time: number
-  running: boolean
-  zone: Zone
   robots: Robot[]
   humans: Human[]
 }
@@ -43,8 +37,7 @@ export interface SimState {
 export interface Decision {
   decision_id: string
   robot_id: string
-  zone_id: string
-  action: 'CONTINUE' | 'SLOW' | 'STOP' | 'REROUTE'
+  action: 'CONTINUE' | 'SLOW' | 'STOP'
   reason_codes: string[]
   risk_score: number
   summary: string
@@ -55,7 +48,6 @@ export interface AnomalyAlert {
   alert_id: string
   alert_type: 'DECISION_RATE_SPIKE' | 'REPEATED_ROBOT_STOP' | 'SENSOR_DISAGREEMENT_SPIKE'
   detected_at: number
-  zone_id: string
   robot_id: string | null
   metric_name: string
   actual_value: number
@@ -86,16 +78,6 @@ export interface GeminiResponse {
 }
 
 // Map types
-export interface MapZone {
-  id: string
-  name: string
-  x: number
-  y: number
-  width: number
-  height: number
-  color: string
-}
-
 export interface MapObstacle {
   id: string
   type: 'floor' | 'rack' | 'conveyor' | 'workstation' | 'dock' | 'wall' | 'charging'
@@ -113,7 +95,6 @@ export interface MapWaypoint {
   name: string
   x: number
   y: number
-  zone_id?: string
 }
 
 export interface WarehouseMap {
@@ -123,11 +104,8 @@ export interface WarehouseMap {
   width: number
   height: number
   grid_resolution: number
-  zones: MapZone[]
   obstacles: MapObstacle[]
   waypoints: MapWaypoint[]
-  robot_spawn_zone?: string
-  human_spawn_zones: string[]
 }
 
 // Pipeline Activity Types
@@ -155,7 +133,6 @@ export interface DecisionActivityData {
 export interface AnomalyActivityData {
   alert_type: string
   severity: string
-  zone_id: string
   robot_id: string | null
   actual_value: number
   forecast_value: number

@@ -135,13 +135,13 @@ async def toggle_scenario(toggle: ScenarioToggle):
         raise HTTPException(status_code=503, detail="World not initialized")
 
     if toggle.visibility:
-        world.zone.visibility = toggle.visibility
+        world.visibility = toggle.visibility
     if toggle.connectivity:
-        world.zone.connectivity = toggle.connectivity
+        world.connectivity = toggle.connectivity
 
     return {
-        "visibility": world.zone.visibility,
-        "connectivity": world.zone.connectivity,
+        "visibility": world.visibility,
+        "connectivity": world.connectivity,
     }
 
 
@@ -206,9 +206,9 @@ async def reset_scenario(params: ResetRequest | None = None):
     # Apply visibility/connectivity if specified
     if params:
         if params.visibility:
-            world.zone.visibility = params.visibility
+            world.visibility = params.visibility
         if params.connectivity:
-            world.zone.connectivity = params.connectivity
+            world.connectivity = params.connectivity
 
     return {"status": "reset", "robot_count": len(world.robots), "human_count": len(world.humans)}
 
@@ -225,9 +225,9 @@ async def get_scenario_status():
         "robot_count": len(world.robots),
         "human_count": len(world.humans),
         "robot_ids": [r.robot_id for r in world.robots],
-        "visibility": world.zone.visibility,
-        "connectivity": world.zone.connectivity,
-        "congestion_level": world.zone.congestion_level,
+        "visibility": world.visibility,
+        "connectivity": world.connectivity,
+        "congestion_level": world.congestion_level,
     }
 
 
@@ -284,7 +284,6 @@ async def get_robot(robot_id: str):
 
     return {
         "robot_id": robot.robot_id,
-        "zone_id": robot.zone_id,
         "x": round(robot.x, 2),
         "y": round(robot.y, 2),
         "velocity": round(robot.velocity, 2),

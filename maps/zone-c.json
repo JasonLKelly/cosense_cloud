@@ -1,20 +1,10 @@
 {
   "id": "zone-c",
-  "name": "Zone C - Distribution Center",
+  "name": "Warehouse - Distribution Center",
   "version": "1.0",
   "width": 60,
   "height": 40,
   "grid_resolution": 0.5,
-
-  "zones": [
-    {"id": "receiving", "name": "Receiving Docks", "x": 0, "y": 0, "width": 8, "height": 15, "color": "#4a7c4e"},
-    {"id": "shipping", "name": "Shipping Docks", "x": 0, "y": 25, "width": 8, "height": 15, "color": "#4e5d7c"},
-    {"id": "storage-a", "name": "Storage A", "x": 12, "y": 2, "width": 20, "height": 16, "color": "#7c6b4e"},
-    {"id": "storage-b", "name": "Storage B", "x": 12, "y": 22, "width": 20, "height": 16, "color": "#7c4e5d"},
-    {"id": "packing", "name": "Packing Area", "x": 36, "y": 8, "width": 12, "height": 24, "color": "#5d4e7c"},
-    {"id": "staging", "name": "Staging Area", "x": 50, "y": 8, "width": 10, "height": 24, "color": "#4e7c7c"},
-    {"id": "charging", "name": "Robot Charging", "x": 52, "y": 2, "width": 6, "height": 4, "color": "#7c7c4e"}
-  ],
 
   "obstacles": [
     {"id": "wall-north", "type": "wall", "x": 0, "y": 0, "width": 60, "height": 0.3},
@@ -57,41 +47,38 @@
   ],
 
   "waypoints": [
-    {"id": "dock-1-pickup", "name": "Dock 1 Pickup", "x": 7, "y": 3.5, "zone_id": "receiving"},
-    {"id": "dock-2-pickup", "name": "Dock 2 Pickup", "x": 7, "y": 7.5, "zone_id": "receiving"},
-    {"id": "dock-3-pickup", "name": "Dock 3 Pickup", "x": 7, "y": 11.5, "zone_id": "receiving"},
-    {"id": "dock-4-dropoff", "name": "Dock 4 Dropoff", "x": 7, "y": 28.5, "zone_id": "shipping"},
-    {"id": "dock-5-dropoff", "name": "Dock 5 Dropoff", "x": 7, "y": 32.5, "zone_id": "shipping"},
-    {"id": "dock-6-dropoff", "name": "Dock 6 Dropoff", "x": 7, "y": 36.5, "zone_id": "shipping"},
+    {"id": "dock-1-pickup", "name": "Dock 1 Pickup", "x": 7, "y": 3.5},
+    {"id": "dock-2-pickup", "name": "Dock 2 Pickup", "x": 7, "y": 7.5},
+    {"id": "dock-3-pickup", "name": "Dock 3 Pickup", "x": 7, "y": 11.5},
+    {"id": "dock-4-dropoff", "name": "Dock 4 Dropoff", "x": 7, "y": 28.5},
+    {"id": "dock-5-dropoff", "name": "Dock 5 Dropoff", "x": 7, "y": 32.5},
+    {"id": "dock-6-dropoff", "name": "Dock 6 Dropoff", "x": 7, "y": 36.5},
 
-    {"id": "rack-a1-front", "name": "Rack A1", "x": 10, "y": 4, "zone_id": "storage-a"},
-    {"id": "rack-a2-front", "name": "Rack A2", "x": 10, "y": 8, "zone_id": "storage-a"},
-    {"id": "rack-a3-front", "name": "Rack A3", "x": 10, "y": 12, "zone_id": "storage-a"},
-    {"id": "rack-a4-front", "name": "Rack A4", "x": 10, "y": 16, "zone_id": "storage-a"},
+    {"id": "rack-a1-front", "name": "Rack A1", "x": 10, "y": 4},
+    {"id": "rack-a2-front", "name": "Rack A2", "x": 10, "y": 8},
+    {"id": "rack-a3-front", "name": "Rack A3", "x": 10, "y": 12},
+    {"id": "rack-a4-front", "name": "Rack A4", "x": 10, "y": 16},
 
-    {"id": "rack-b1-front", "name": "Rack B1", "x": 10, "y": 24, "zone_id": "storage-b"},
-    {"id": "rack-b2-front", "name": "Rack B2", "x": 10, "y": 28, "zone_id": "storage-b"},
-    {"id": "rack-b3-front", "name": "Rack B3", "x": 10, "y": 32, "zone_id": "storage-b"},
-    {"id": "rack-b4-front", "name": "Rack B4", "x": 10, "y": 36, "zone_id": "storage-b"},
+    {"id": "rack-b1-front", "name": "Rack B1", "x": 10, "y": 24},
+    {"id": "rack-b2-front", "name": "Rack B2", "x": 10, "y": 28},
+    {"id": "rack-b3-front", "name": "Rack B3", "x": 10, "y": 32},
+    {"id": "rack-b4-front", "name": "Rack B4", "x": 10, "y": 36},
 
-    {"id": "pack-1-input", "name": "Pack Station 1", "x": 36, "y": 11.5, "zone_id": "packing"},
-    {"id": "pack-2-input", "name": "Pack Station 2", "x": 36, "y": 16.5, "zone_id": "packing"},
-    {"id": "pack-3-input", "name": "Pack Station 3", "x": 36, "y": 21.5, "zone_id": "packing"},
-    {"id": "pack-4-input", "name": "Pack Station 4", "x": 36, "y": 26.5, "zone_id": "packing"},
+    {"id": "pack-1-input", "name": "Pack Station 1", "x": 36, "y": 11.5},
+    {"id": "pack-2-input", "name": "Pack Station 2", "x": 36, "y": 16.5},
+    {"id": "pack-3-input", "name": "Pack Station 3", "x": 36, "y": 21.5},
+    {"id": "pack-4-input", "name": "Pack Station 4", "x": 36, "y": 26.5},
 
-    {"id": "staging-1", "name": "Staging 1", "x": 52, "y": 12, "zone_id": "staging"},
-    {"id": "staging-2", "name": "Staging 2", "x": 52, "y": 20, "zone_id": "staging"},
-    {"id": "staging-3", "name": "Staging 3", "x": 52, "y": 28, "zone_id": "staging"},
+    {"id": "staging-1", "name": "Staging 1", "x": 52, "y": 12},
+    {"id": "staging-2", "name": "Staging 2", "x": 52, "y": 20},
+    {"id": "staging-3", "name": "Staging 3", "x": 52, "y": 28},
 
-    {"id": "charge-1-spot", "name": "Charging 1", "x": 54, "y": 4, "zone_id": "charging"},
-    {"id": "charge-2-spot", "name": "Charging 2", "x": 57, "y": 4, "zone_id": "charging"},
+    {"id": "charge-1-spot", "name": "Charging 1", "x": 54, "y": 4},
+    {"id": "charge-2-spot", "name": "Charging 2", "x": 57, "y": 4},
 
     {"id": "main-aisle-north", "name": "Main Aisle North", "x": 25, "y": 1.5},
     {"id": "main-aisle-south", "name": "Main Aisle South", "x": 25, "y": 38.5},
     {"id": "cross-aisle-west", "name": "Cross Aisle West", "x": 9, "y": 20},
     {"id": "cross-aisle-east", "name": "Cross Aisle East", "x": 32, "y": 20}
-  ],
-
-  "robot_spawn_zone": "charging",
-  "human_spawn_zones": ["packing", "receiving", "shipping"]
+  ]
 }

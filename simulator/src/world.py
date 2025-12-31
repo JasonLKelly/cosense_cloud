@@ -10,7 +10,7 @@ from pathlib import Path
 from confluent_kafka import Producer
 
 from .config import settings
-from .entities import Robot, Human, Zone
+from .entities import Robot, Human
 from .pathfinding import Pathfinder, create_pathfinder_from_map
 
 
@@ -34,7 +34,8 @@ def rssi_from_distance(dist: float, rng: random.Random) -> float:
 class World:
     """The simulation world."""
 
-    zone: Zone
+    width: float
+    height: float
     robots: list[Robot]
     humans: list[Human]
     rng: random.Random
@@ -47,6 +48,11 @@ class World:
 
     sim_time: float = 0.0  # Simulation time in seconds
     running: bool = False
+
+    # Environmental conditions (can be toggled via scenario API)
+    visibility: str = "normal"  # normal, degraded, poor
+    connectivity: str = "normal"  # normal, degraded, offline
+    congestion_level: float = 0.0
 
     @classmethod
     def create(
@@ -68,41 +74,35 @@ class World:
         map_data = cls._load_map(map_id)
         waypoints = map_data.get("waypoints", [])
 
-        zone = Zone(
-            zone_id=map_data.get("id", settings.zone_id),
-            width=map_data.get("width", settings.world_width),
-            height=map_data.get("height", settings.world_height),
-        )
+        width = map_data.get("width", settings.world_width)
+        height = map_data.get("height", settings.world_height)
 
         # Create pathfinder from map
         pathfinder = create_pathfinder_from_map(map_data) if map_data else None
 
-        # Get spawn locations
+        # Get spawn locations - use waypoints that start with "charge" for robots
         robot_spawn_waypoints = [
             wp for wp in waypoints
-            if wp.get("zone_id") == map_data.get("robot_spawn_zone") or
-               wp["id"].startswith("charge")
+            if wp["id"].startswith("charge")
         ]
-        human_spawn_zones = map_data.get("human_spawn_zones", [])
+        # Use waypoints that start with "pack" for humans
         human_spawn_waypoints = [
             wp for wp in waypoints
-            if wp.get("zone_id") in human_spawn_zones or
-               wp["id"].startswith("pack")
+            if wp["id"].startswith("pack")
         ]
 
-        # Create robots at charging stations or spawn zone
+        # Create robots at charging stations
         robots = []
         for i in range(num_robots):
             if robot_spawn_waypoints:
                 spawn = rng.choice(robot_spawn_waypoints)
                 x, y = spawn["x"], spawn["y"]
             else:
-                x = rng.uniform(5, zone.width - 5)
-                y = rng.uniform(5, zone.height - 5)
+                x = rng.uniform(5, width - 5)
+                y = rng.uniform(5, height - 5)
 
             robot = Robot(
                 robot_id=f"robot-{i + 1}",
-                zone_id=zone.zone_id,
                 x=x + rng.uniform(-1, 1),
                 y=y + rng.uniform(-1, 1),
             )
@@ -114,23 +114,21 @@ class World:
             if human_spawn_waypoints:
                 spawn = rng.choice(human_spawn_waypoints)
                 x, y = spawn["x"], spawn["y"]
-                zone_id = spawn.get("zone_id")
             else:
-                x = rng.uniform(5, zone.width - 5)
-                y = rng.uniform(5, zone.height - 5)
-                zone_id = None
+                x = rng.uniform(5, width - 5)
+                y = rng.uniform(5, height - 5)
 
             human = Human(
                 human_id=f"human-{i + 1}",
-                zone_id=zone.zone_id,
                 x=x + rng.uniform(-1, 1),
                 y=y + rng.uniform(-1, 1),
             )
-            human.set_home(x, y, zone_id)
+            human.set_home(x, y)
             humans.append(human)
 
         world = cls(
-            zone=zone,
+            width=width,
+            height=height,
             robots=robots,
             humans=humans,
             rng=rng,
@@ -167,14 +165,13 @@ class World:
         """Assign a random waypoint destination to a robot."""
         if not self.waypoints or not self.pathfinder:
             # Fall back to random target
-            robot.pick_new_target(self.zone.width, self.zone.height, self.rng)
+            robot.pick_new_target(self.width, self.height, self.rng)
             return
 
         # Pick a random waypoint (excluding charging stations for destinations)
         valid_waypoints = [
             wp for wp in self.waypoints
-            if not wp["id"].startswith("charge") and
-               wp.get("zone_id") != "charging"
+            if not wp["id"].startswith("charge")
         ]
 
         if not valid_waypoints:
@@ -192,7 +189,7 @@ class World:
             robot.set_path(path, destination["id"])
         else:
             # No path found, fall back to random movement
-            robot.pick_new_target(self.zone.width, self.zone.height, self.rng)
+            robot.pick_new_target(self.width, self.height, self.rng)
 
     def add_robots(self, count: int):
         """Add more robots to the simulation."""
@@ -201,8 +198,7 @@ class World:
         # Get spawn waypoints
         robot_spawn_waypoints = [
             wp for wp in self.waypoints
-            if wp.get("zone_id") == self.map_data.get("robot_spawn_zone") or
-               wp["id"].startswith("charge")
+            if wp["id"].startswith("charge")
         ]
 
         for i in range(count):
@@ -210,12 +206,11 @@ class World:
                 spawn = self.rng.choice(robot_spawn_waypoints)
                 x, y = spawn["x"], spawn["y"]
             else:
-                x = self.rng.uniform(5, self.zone.width - 5)
-                y = self.rng.uniform(5, self.zone.height - 5)
+                x = self.rng.uniform(5, self.width - 5)
+                y = self.rng.uniform(5, self.height - 5)
 
             robot = Robot(
                 robot_id=f"robot-{start_id + i}",
-                zone_id=self.zone.zone_id,
                 x=x + self.rng.uniform(-1, 1),
                 y=y + self.rng.uniform(-1, 1),
             )
@@ -226,31 +221,26 @@ class World:
         """Add more humans to the simulation."""
         start_id = len(self.humans) + 1
 
-        human_spawn_zones = self.map_data.get("human_spawn_zones", [])
         human_spawn_waypoints = [
             wp for wp in self.waypoints
-            if wp.get("zone_id") in human_spawn_zones or
-               wp["id"].startswith("pack")
+            if wp["id"].startswith("pack")
         ]
 
         for i in range(count):
             if human_spawn_waypoints:
                 spawn = self.rng.choice(human_spawn_waypoints)
                 x, y = spawn["x"], spawn["y"]
-                zone_id = spawn.get("zone_id")
             else:
-                x = self.rng.uniform(5, self.zone.width - 5)
-                y = self.rng.uniform(5, self.zone.height - 5)
-                zone_id = None
+                x = self.rng.uniform(5, self.width - 5)
+                y = self.rng.uniform(5, self.height - 5)
 
             human = Human(
                 human_id=f"human-{start_id + i}",
-                zone_id=self.zone.zone_id,
                 x=x + self.rng.uniform(-1, 1),
                 y=y + self.rng.uniform(-1, 1),
             )
-            human.set_home(x, y, zone_id)
-            human.pick_new_target(self.zone.width, self.zone.height, self.rng)
+            human.set_home(x, y)
+            human.pick_new_target(self.width, self.height, self.rng)
             self.humans.append(human)
 
     def tick(self, dt: float):
@@ -267,20 +257,28 @@ class World:
 
         # Update all entities
         for robot in self.robots:
-            robot.update(dt, self.zone.width, self.zone.height, self.rng, self.sim_time)
+            robot.update(dt, self.width, self.height, self.rng, self.sim_time)
             # Assign new destination if needed (only if not paused and not stopped)
             if robot.target_x is None and robot.commanded_action != "STOP" and self.sim_time >= robot.idle_until:
                 self._assign_random_destination(robot)
 
         for human in self.humans:
-            human.update(dt, self.sim_time, self.zone.width, self.zone.height, self.rng)
+            human.update(dt, self.sim_time, self.width, self.height, self.rng)
 
         # Update robot sensors
         for robot in self.robots:
             self._update_robot_sensors(robot)
 
-        # Update zone
-        self.zone.update_congestion(len(self.robots), len(self.humans))
+        # Update congestion level
+        self._update_congestion()
+
+    def _update_congestion(self):
+        """Update congestion based on entity counts."""
+        # Simple formula: congestion increases with density
+        area = self.width * self.height
+        entity_density = (len(self.robots) + len(self.humans)) / area
+        # Normalize: 0.01 entities/m² = 0.5 congestion
+        self.congestion_level = min(1.0, entity_density / 0.02)
 
     def _update_robot_sensors(self, robot: Robot):
         """Update simulated sensor readings for a robot."""
@@ -316,7 +314,6 @@ class World:
             event = {
                 "robot_id": robot.robot_id,
                 "timestamp": timestamp,
-                "zone_id": robot.zone_id,
                 "x": round(robot.x, 2),
                 "y": round(robot.y, 2),
                 "velocity": round(robot.velocity, 2),
@@ -341,7 +338,6 @@ class World:
             event = {
                 "human_id": human.human_id,
                 "timestamp": timestamp,
-                "zone_id": human.zone_id,
                 "x": round(human.x + pos_noise, 2),
                 "y": round(human.y + pos_noise, 2),
                 "velocity": round(human.velocity, 2),
@@ -353,22 +349,6 @@ class World:
                 key=human.human_id,
                 value=json.dumps(event),
             )
-
-        # Zone context (less frequent, but emit each tick for simplicity)
-        zone_event = {
-            "zone_id": self.zone.zone_id,
-            "timestamp": timestamp,
-            "visibility": self.zone.visibility,
-            "congestion_level": round(self.zone.congestion_level, 2),
-            "robot_count": self.zone.robot_count,
-            "human_count": self.zone.human_count,
-            "connectivity": self.zone.connectivity,
-        }
-        self.producer.produce(
-            settings.topic("zone.context"),
-            key=self.zone.zone_id,
-            value=json.dumps(zone_event),
-        )
 
         # Flush to ensure delivery
         self.producer.flush(timeout=0.1)
@@ -386,20 +366,16 @@ class World:
             "sim_time": round(self.sim_time, 2),
             "running": self.running,
             "map_id": self.map_data.get("id", "default"),
-            "zone": {
-                "zone_id": self.zone.zone_id,
-                "width": self.zone.width,
-                "height": self.zone.height,
-                "visibility": self.zone.visibility,
-                "connectivity": self.zone.connectivity,
-                "congestion_level": round(self.zone.congestion_level, 2),
-                "robot_count": len(self.robots),
-                "human_count": len(self.humans),
-            },
+            "width": self.width,
+            "height": self.height,
+            "visibility": self.visibility,
+            "connectivity": self.connectivity,
+            "congestion_level": round(self.congestion_level, 2),
+            "robot_count": len(self.robots),
+            "human_count": len(self.humans),
             "robots": [
                 {
                     "robot_id": r.robot_id,
-                    "zone_id": r.zone_id,
                     "x": round(r.x, 2),
                     "y": round(r.y, 2),
                     "velocity": round(r.velocity, 2),
@@ -414,7 +390,6 @@ class World:
             "humans": [
                 {
                     "human_id": h.human_id,
-                    "zone_id": h.zone_id,
                     "x": round(h.x, 2),
                     "y": round(h.y, 2),
                     "velocity": round(h.velocity, 2),

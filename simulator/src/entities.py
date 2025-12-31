@@ -11,7 +11,6 @@ class Robot:
     """A simulated robot in the warehouse."""
 
     robot_id: str
-    zone_id: str
     x: float
     y: float
     velocity: float = 0.0
@@ -129,7 +128,6 @@ class Human:
     """A simulated human worker in the warehouse."""
 
     human_id: str
-    zone_id: str
     x: float
     y: float
     velocity: float = 0.0
@@ -141,15 +139,13 @@ class Human:
     idle_until: float = 0.0  # timestamp when idle period ends
 
     # Workstation assignment (for realistic movement)
-    assigned_zone: str | None = None
     home_x: float | None = None
     home_y: float | None = None
 
-    def set_home(self, x: float, y: float, zone: str | None = None):
+    def set_home(self, x: float, y: float):
         """Set the human's home position (workstation)."""
         self.home_x = x
         self.home_y = y
-        self.assigned_zone = zone
 
     def pick_new_target(self, world_width: float, world_height: float, rng: random.Random):
         """Pick a new target location."""
@@ -214,31 +210,3 @@ class Human:
         # Clamp to world bounds
         self.x = max(0, min(world_width, self.x))
         self.y = max(0, min(world_height, self.y))
-
-
-@dataclass
-class Zone:
-    """A warehouse zone with environmental conditions."""
-
-    zone_id: str
-    width: float
-    height: float
-
-    # Conditions (can be toggled via scenario API)
-    visibility: Literal["normal", "degraded", "poor"] = "normal"
-    connectivity: Literal["normal", "degraded", "offline"] = "normal"
-
-    # Computed each tick
-    robot_count: int = 0
-    human_count: int = 0
-    congestion_level: float = 0.0
-
-    def update_congestion(self, robot_count: int, human_count: int):
-        """Update congestion based on entity counts."""
-        self.robot_count = robot_count
-        self.human_count = human_count
-        # Simple formula: congestion increases with density
-        area = self.width * self.height
-        entity_density = (robot_count + human_count) / area
-        # Normalize: 0.01 entities/m² = 0.5 congestion
-        self.congestion_level = min(1.0, entity_density / 0.02)

@@ -35,18 +35,6 @@ class Waypoint(BaseModel):
     name: str
     x: float  # meters
     y: float  # meters
-    zone_id: Optional[str] = None
-
-
-class Zone(BaseModel):
-    """A named area of the warehouse."""
-    id: str
-    name: str
-    x: float      # top-left corner, meters
-    y: float
-    width: float  # meters
-    height: float
-    color: str = "#444466"  # display color
 
 
 class Obstacle(BaseModel):
@@ -75,18 +63,11 @@ class WarehouseMap(BaseModel):
     # Grid resolution for pathfinding (meters per cell)
     grid_resolution: float = 0.5
 
-    # Named zones
-    zones: list[Zone] = Field(default_factory=list)
-
     # Obstacles (racks, conveyors, workstations, walls)
     obstacles: list[Obstacle] = Field(default_factory=list)
 
     # Named waypoints for navigation
     waypoints: list[Waypoint] = Field(default_factory=list)
-
-    # Default spawn areas for robots and humans
-    robot_spawn_zone: Optional[str] = None
-    human_spawn_zones: list[str] = Field(default_factory=list)
 
     def to_grid(self) -> list[list[CellType]]:
         """Convert map to grid for pathfinding."""

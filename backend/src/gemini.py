@@ -55,7 +55,6 @@ class ToolContext:
     """Context available to tool functions during a question."""
     decisions: list[dict] = field(default_factory=list)
     robot_states: dict[str, list[dict]] = field(default_factory=dict)
-    zone_states: dict[str, dict] = field(default_factory=dict)
     current_state: dict[str, dict] = field(default_factory=dict)
     anomaly_alerts: list[dict] = field(default_factory=list)
     simulator_url: str = "http://simulator:8000"
@@ -190,7 +189,6 @@ def get_nearby_entities(robot_id: str, radius_m: float = 5.0) -> dict:
 
 def get_decisions(
     robot_id: str | None = None,
-    zone_id: str | None = None,
     action: str | None = None,
     limit: int = 10
 ) -> dict:
@@ -198,8 +196,7 @@ def get_decisions(
 
     Args:
         robot_id: Filter by robot (optional)
-        zone_id: Filter by zone (optional)
-        action: Filter by action type: STOP, SLOW, REROUTE, CONTINUE (optional)
+        action: Filter by action type: STOP, SLOW, CONTINUE (optional)
         limit: Maximum number of decisions to return (default 10)
 
     Returns:
@@ -210,8 +207,6 @@ def get_decisions(
     # Apply filters
     if robot_id:
         decisions = [d for d in decisions if d.get("robot_id") == robot_id]
-    if zone_id:
-        decisions = [d for d in decisions if d.get("zone_id") == zone_id]
     if action:
         decisions = [d for d in decisions if d.get("action") == action]
 
@@ -220,7 +215,7 @@ def get_decisions(
 
     return {
         "count": len(recent),
-        "filters": {"robot_id": robot_id, "zone_id": zone_id, "action": action},
+        "filters": {"robot_id": robot_id, "action": action},
         "decisions": [
             {
                 "robot_id": d.get("robot_id"),
@@ -232,29 +227,6 @@ def get_decisions(
             }
             for d in recent
         ],
-    }
-
-
-def get_zone_context(zone_id: str) -> dict:
-    """Get current zone environmental status.
-
-    Args:
-        zone_id: The zone identifier (e.g., "zone-c")
-
-    Returns:
-        Zone visibility, congestion level, entity counts, connectivity status
-    """
-    zone = _ctx.zone_states.get(zone_id)
-    if not zone:
-        return {"error": f"Zone {zone_id} not found", "zone_id": zone_id}
-
-    return {
-        "zone_id": zone_id,
-        "visibility": zone.get("visibility", "unknown"),
-        "congestion_level": zone.get("congestion_level", 0),
-        "connectivity": zone.get("connectivity", "unknown"),
-        "robot_count": zone.get("robot_count", 0),
-        "human_count": zone.get("human_count", 0),
     }
 
 
@@ -300,7 +272,6 @@ def get_anomalies(
                 "alert_type": a.get("alert_type"),
                 "severity": a.get("severity"),
                 "robot_id": a.get("robot_id"),
-                "zone_id": a.get("zone_id"),
                 "context": a.get("context"),
                 "ai_explanation": a.get("ai_explanation"),
                 "detected_at": a.get("detected_at"),
@@ -434,7 +405,7 @@ def analyze_patterns(window_sec: int = 300, group_by: str = "action") -> dict:
 
     Args:
         window_sec: Time window to analyze in seconds (default 300 = 5 min)
-        group_by: How to group results: "action", "reason_code", "robot_id", "zone_id"
+        group_by: How to group results: "action", "reason_code", "robot_id"
 
     Returns:
         Aggregated counts and distribution of decisions
@@ -452,9 +423,6 @@ def analyze_patterns(window_sec: int = 300, group_by: str = "action") -> dict:
                 counts[reason] = counts.get(reason, 0) + 1
         elif group_by == "robot_id":
             key = d.get("robot_id", "unknown")
-            counts[key] = counts.get(key, 0) + 1
-        elif group_by == "zone_id":
-            key = d.get("zone_id", "unknown")
             counts[key] = counts.get(key, 0) + 1
 
     # Calculate total and percentages
@@ -479,7 +447,6 @@ TOOLS = [
     get_nearby_entities,
     get_decisions,
     get_anomalies,
-    get_zone_context,
     get_scenario_status,
     analyze_patterns,
     # Simulation control tools
@@ -498,14 +465,13 @@ TOOLS = [
 
 SYSTEM_PROMPT = """You are an operator copilot for CoSense, a warehouse robot coordination system.
 
-Your job is to help operators understand and control what's happening with robots, humans, and zones.
+Your job is to help operators understand and control what's happening with robots and humans.
 
 QUERY TOOLS:
 - get_robot_state: Get a robot's position, velocity, sensors, and trajectory
 - get_nearby_entities: Find humans and robots near a specific robot
-- get_decisions: Get recent coordination decisions (STOP, SLOW, REROUTE, CONTINUE)
+- get_decisions: Get recent coordination decisions (STOP, SLOW, CONTINUE)
 - get_anomalies: Get AI-detected anomalies from Flink pipeline (spikes, patterns)
-- get_zone_context: Get zone conditions (visibility, congestion, connectivity)
 - get_scenario_status: Get simulation status (running, entity counts, toggles)
 - analyze_patterns: Analyze decision patterns and trends
 
@@ -587,7 +553,6 @@ async def ask_copilot(
     history: list[dict],
     decisions: list[dict],
     robot_states: dict[str, list[dict]],
-    zone_states: dict[str, dict],
     current_state: dict[str, dict],
     anomaly_alerts: list[dict] | None = None,
 ) -> OperatorAnswer:
@@ -598,7 +563,6 @@ async def ask_copilot(
         history: Conversation history [{"role": "user"|"model", "content": "..."}]
         decisions: Recent coordination decisions
         robot_states: Historical robot states by robot_id
-        zone_states: Current zone states by zone_id
         current_state: Current state of all entities
         anomaly_alerts: Recent anomaly alerts from Flink AI pipeline
 
@@ -617,7 +581,6 @@ async def ask_copilot(
     set_tool_context(ToolContext(
         decisions=decisions,
         robot_states=robot_states,
-        zone_states=zone_states,
         current_state=current_state,
         anomaly_alerts=anomaly_alerts or [],
         simulator_url=settings.simulator_url,
@@ -691,7 +654,6 @@ async def ask_copilot_stream(
     history: list[dict],
     decisions: list[dict],
     robot_states: dict[str, list[dict]],
-    zone_states: dict[str, dict],
     current_state: dict[str, dict],
     anomaly_alerts: list[dict] | None = None,
 ) -> AsyncIterator[str]:
@@ -712,7 +674,6 @@ async def ask_copilot_stream(
     set_tool_context(ToolContext(
         decisions=decisions,
         robot_states=robot_states,
-        zone_states=zone_states,
         current_state=current_state,
         anomaly_alerts=anomaly_alerts or [],
         simulator_url=settings.simulator_url,

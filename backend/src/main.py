@@ -32,7 +32,6 @@ class StateBuffer:
     def __init__(self):
         self.decisions: deque[dict] = deque(maxlen=settings.max_decisions_buffer)
         self.robot_states: dict[str, deque[dict]] = {}
-        self.zone_states: dict[str, dict] = {}
         self.current_state: dict[str, dict] = {}  # Latest state per robot
         self.anomaly_alerts: deque[dict] = deque(maxlen=settings.max_anomalies_buffer)
 
@@ -45,9 +44,6 @@ class StateBuffer:
             self.robot_states[robot_id] = deque(maxlen=settings.max_state_buffer)
         self.robot_states[robot_id].append(state)
         self.current_state[robot_id] = state
-
-    def update_zone(self, zone: dict):
-        self.zone_states[zone["zone_id"]] = zone
 
     def add_anomaly_alert(self, alert: dict):
         self.anomaly_alerts.append(alert)
@@ -105,7 +101,6 @@ async def consume_loop():
             consumer.subscribe([
                 settings.topic(settings.coordination_decisions_topic),
                 settings.topic(settings.coordination_state_topic),
-                settings.topic(settings.zone_context_topic),
                 settings.topic(settings.anomaly_alerts_topic),
             ])
             logger.info("Kafka consumer connected")
@@ -136,15 +131,12 @@ async def consume_loop():
                         )
                     elif topic == settings.topic(settings.coordination_state_topic):
                         buffer.add_robot_state(value)
-                    elif topic == settings.topic(settings.zone_context_topic):
-                        buffer.update_zone(value)
                     elif topic == settings.topic(settings.anomaly_alerts_topic):
                         buffer.add_anomaly_alert(value)
                         # Emit activity event
                         await emit_anomaly(
                             alert_type=value.get("alert_type", ""),
                             severity=value.get("severity", ""),
-                            zone_id=value.get("zone_id", ""),
                             robot_id=value.get("robot_id"),
                             actual_value=value.get("actual_value", 0),
                             forecast_value=value.get("forecast_value", 1),
@@ -239,7 +231,6 @@ async def get_state():
     """Get current coordination state for all robots."""
     return {
         "robots": buffer.current_state,
-        "zones": buffer.zone_states,
     }
 
 
@@ -367,7 +358,6 @@ async def ask_question(request: QuestionRequest):
         history=history,
         decisions=list(buffer.decisions),
         robot_states=robot_states,
-        zone_states=buffer.zone_states,
         current_state=buffer.current_state,
         anomaly_alerts=list(buffer.anomaly_alerts),
     )
@@ -397,7 +387,6 @@ async def ask_question_stream(request: QuestionRequest):
             history=history,
             decisions=list(buffer.decisions),
             robot_states=robot_states,
-            zone_states=buffer.zone_states,
             current_state=buffer.current_state,
             anomaly_alerts=list(buffer.anomaly_alerts),
         ):
@@ -522,7 +511,6 @@ class MockAnomalyRequest(BaseModel):
     ] = "DECISION_RATE_SPIKE"
     severity: Literal["HIGH", "MEDIUM"] = "HIGH"
     robot_id: str | None = None
-    zone_id: str = "zone-c"
 
 
 @app.post("/debug/mock-anomaly")
@@ -537,12 +525,12 @@ async def create_mock_anomaly(request: MockAnomalyRequest | None = None):
     # Generate context and AI explanation based on alert type
     contexts = {
         "DECISION_RATE_SPIKE": {
-            "context": f"Decision rate exceeded normal bounds in {req.zone_id}",
+            "context": "Decision rate exceeded normal bounds in the warehouse",
             "ai_explanation": (
-                f"Zone {req.zone_id} is experiencing an unusual surge in safety interventions. "
+                "The warehouse is experiencing an unusual surge in safety interventions. "
                 "The decision rate has spiked significantly above the expected baseline, "
                 "which may indicate increased congestion or environmental changes. "
-                "Recommend monitoring zone conditions and considering temporary capacity reduction."
+                "Recommend monitoring conditions and considering temporary capacity reduction."
             ),
             "metric_name": "decision_count",
             "actual_value": 15.0,
@@ -561,9 +549,9 @@ async def create_mock_anomaly(request: MockAnomalyRequest | None = None):
             "forecast_value": 0.5,
         },
         "SENSOR_DISAGREEMENT_SPIKE": {
-            "context": f"Multiple sensor disagreements detected in {req.zone_id}",
+            "context": "Multiple sensor disagreements detected in the warehouse",
             "ai_explanation": (
-                f"Sensor disagreement events have spiked in {req.zone_id}. "
+                "Sensor disagreement events have spiked in the warehouse. "
                 "When ultrasonic and BLE sensors report conflicting proximity data, "
                 "it may indicate environmental interference (dust, reflective surfaces) "
                 "or sensor degradation. Recommend sensor diagnostics for affected robots."
@@ -576,10 +564,9 @@ async def create_mock_anomaly(request: MockAnomalyRequest | None = None):
 
     alert_data = contexts[req.alert_type]
     alert = {
-        "alert_id": f"{req.alert_type.lower()[:3]}-{now_ms}-{req.zone_id}",
+        "alert_id": f"{req.alert_type.lower()[:3]}-{now_ms}",
         "alert_type": req.alert_type,
         "detected_at": now_ms,
-        "zone_id": req.zone_id,
         "robot_id": req.robot_id or ("robot-1" if req.alert_type == "REPEATED_ROBOT_STOP" else None),
         "metric_name": alert_data["metric_name"],
         "actual_value": alert_data["actual_value"],

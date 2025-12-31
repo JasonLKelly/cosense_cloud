@@ -162,26 +162,7 @@ export function WarehouseMapView({
           flexShrink: 0,
         }}
       >
-      {/* Zone backgrounds (lowest layer) */}
-      {map.zones.map((zone) => (
-        <div
-          key={zone.id}
-          className="zone-background"
-          style={{
-            position: 'absolute',
-            left: zone.x * scale,
-            top: zone.y * scale,
-            width: zone.width * scale,
-            height: zone.height * scale,
-            background: zone.color,
-            opacity: 0.15,
-            pointerEvents: 'none',
-          }}
-          title={zone.name}
-        />
-      ))}
-
-      {/* Obstacles (middle layer) */}
+      {/* Obstacles */}
       {map.obstacles.map((obs) =>
         obs.type === 'conveyor' ? (
           <ConveyorRect key={obs.id} obstacle={obs} scale={scale} />
@@ -189,26 +170,6 @@ export function WarehouseMapView({
           <ObstacleRect key={obs.id} obstacle={obs} scale={scale} />
         )
       )}
-
-      {/* Zone labels */}
-      {map.zones.map((zone) => (
-        <div
-          key={`label-${zone.id}`}
-          style={{
-            position: 'absolute',
-            left: zone.x * scale + 4,
-            top: zone.y * scale + 2,
-            fontSize: 10,
-            color: 'rgba(255,255,255,0.4)',
-            pointerEvents: 'none',
-            textTransform: 'uppercase',
-            fontWeight: 600,
-            letterSpacing: '0.5px',
-          }}
-        >
-          {zone.name}
-        </div>
-      ))}
 
       {/* Humans (below robots) */}
       {humans.map((human) => (

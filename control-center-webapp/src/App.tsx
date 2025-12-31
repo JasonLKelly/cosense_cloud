@@ -85,7 +85,7 @@ export default function App() {
   }
 
   const handleExplainAlert = (alert: AnomalyAlert) => {
-    const prompt = `Explain this ${alert.severity} severity ${alert.alert_type} alert in zone ${alert.zone_id}${alert.robot_id ? ` involving ${alert.robot_id}` : ''}. Context: "${alert.context}". What might be causing this and what should the operator do?`
+    const prompt = `Explain this ${alert.severity} severity ${alert.alert_type} alert${alert.robot_id ? ` involving ${alert.robot_id}` : ''}. Context: "${alert.context}". What might be causing this and what should the operator do?`
     ask(prompt)
   }
 
@@ -157,7 +157,7 @@ export default function App() {
 
         {/* Right Drawer - Metrics Panel */}
         <MetricsPanel
-          zone={state?.zone || null}
+          simState={state}
           robots={state?.robots || []}
           decisions={decisions}
           anomalies={anomalies}
