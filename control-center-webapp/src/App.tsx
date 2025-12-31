@@ -26,6 +26,7 @@ export default function App() {
     toggleConnectivity,
     stopRobot,
     startRobot,
+    dismissAlert,
   } = useSimState({ pollDecisions, pollAnomalies, pollInterval })
 
   const {
@@ -167,6 +168,7 @@ export default function App() {
           onRobotClick={handleRobotClick}
           onRobotHover={setHoveredRobotId}
           onExplainAlert={handleExplainAlert}
+          onDismissAlert={dismissAlert}
         />
       </div>
 

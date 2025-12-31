@@ -13,6 +13,7 @@ interface MetricsPanelProps {
   onRobotClick: (robot: Robot) => void
   onRobotHover: (robotId: string | null) => void
   onExplainAlert?: (alert: AnomalyAlert) => void
+  onDismissAlert?: (alertId: string) => void
 }
 
 export function MetricsPanel({
@@ -27,6 +28,7 @@ export function MetricsPanel({
   onRobotClick,
   onRobotHover,
   onExplainAlert,
+  onDismissAlert,
 }: MetricsPanelProps) {
   const [decisionsExpanded, setDecisionsExpanded] = useState(true)
   const [robotsExpanded, setRobotsExpanded] = useState(true)
@@ -231,6 +233,18 @@ export function MetricsPanel({
                     {a.severity}
                   </span>
                   <span className="alert-type">{formatAlertType(a.alert_type)}</span>
+                  {onDismissAlert && (
+                    <button
+                      className="btn-dismiss"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onDismissAlert(a.alert_id)
+                      }}
+                      title="Dismiss alert"
+                    >
+                      &times;
+                    </button>
+                  )}
                 </div>
                 {a.robot_id && (
                   <div className="alert-robot">{a.robot_id}</div>

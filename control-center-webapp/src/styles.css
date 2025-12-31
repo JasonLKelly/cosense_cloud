@@ -753,6 +753,24 @@ body {
   margin-bottom: var(--spacing-xs);
 }
 
+.btn-dismiss {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+  opacity: 0.6;
+  transition: opacity var(--transition-fast), color var(--transition-fast);
+}
+
+.btn-dismiss:hover {
+  opacity: 1;
+  color: var(--status-error);
+}
+
 .alert-severity {
   font-size: 10px;
   font-weight: 700;

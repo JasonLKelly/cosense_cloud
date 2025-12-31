@@ -34,6 +34,7 @@ class StateBuffer:
         self.robot_states: dict[str, deque[dict]] = {}
         self.current_state: dict[str, dict] = {}  # Latest state per robot
         self.anomaly_alerts: deque[dict] = deque(maxlen=settings.max_anomalies_buffer)
+        self.dismissed_alert_ids: set[str] = set()
 
     def add_decision(self, decision: dict):
         self.decisions.append(decision)
@@ -46,7 +47,24 @@ class StateBuffer:
         self.current_state[robot_id] = state
 
     def add_anomaly_alert(self, alert: dict):
+        # Skip if already dismissed
+        if alert.get("alert_id") in self.dismissed_alert_ids:
+            return
         self.anomaly_alerts.append(alert)
+
+    def dismiss_anomaly(self, alert_id: str) -> bool:
+        """Dismiss an anomaly alert. Returns True if found and dismissed."""
+        self.dismissed_alert_ids.add(alert_id)
+        # Remove from current buffer
+        for i, alert in enumerate(self.anomaly_alerts):
+            if alert.get("alert_id") == alert_id:
+                del self.anomaly_alerts[i]
+                return True
+        return False
+
+    def get_active_anomalies(self) -> list[dict]:
+        """Get anomalies that haven't been dismissed."""
+        return [a for a in self.anomaly_alerts if a.get("alert_id") not in self.dismissed_alert_ids]
 
 
 buffer = StateBuffer()
@@ -251,14 +269,21 @@ async def get_robot_decisions(robot_id: str, limit: int = 10):
 @app.get("/anomalies")
 async def get_anomalies(limit: int = 20):
     """Get recent anomaly alerts from Flink AI pipeline."""
-    return list(buffer.anomaly_alerts)[-limit:]
+    return buffer.get_active_anomalies()[-limit:]
 
 
 @app.get("/anomalies/{robot_id}")
 async def get_robot_anomalies(robot_id: str, limit: int = 10):
     """Get recent anomaly alerts for a specific robot."""
-    robot_anomalies = [a for a in buffer.anomaly_alerts if a.get("robot_id") == robot_id]
+    robot_anomalies = [a for a in buffer.get_active_anomalies() if a.get("robot_id") == robot_id]
     return robot_anomalies[-limit:]
+
+
+@app.delete("/anomalies/{alert_id}")
+async def dismiss_anomaly(alert_id: str):
+    """Dismiss an anomaly alert (removes it from the list)."""
+    buffer.dismiss_anomaly(alert_id)
+    return {"status": "dismissed", "alert_id": alert_id}
 
 
 # SSE stream for real-time updates

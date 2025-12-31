@@ -104,6 +104,12 @@ export function useSimState(options: UseSimStateOptions = {}) {
     await fetch(`${API_URL}/robots/${robotId}/start`, { method: 'POST' })
   }, [])
 
+  const dismissAlert = useCallback(async (alertId: string) => {
+    await fetch(`${API_URL}/anomalies/${alertId}`, { method: 'DELETE' })
+    // Optimistically remove from local state
+    setAnomalies(prev => prev.filter(a => a.alert_id !== alertId))
+  }, [])
+
   return {
     state,
     decisions,
@@ -116,5 +122,6 @@ export function useSimState(options: UseSimStateOptions = {}) {
     toggleConnectivity,
     stopRobot,
     startRobot,
+    dismissAlert,
   }
 }
