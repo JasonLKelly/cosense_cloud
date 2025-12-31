@@ -12,8 +12,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY pyproject.toml .
 RUN pip install --no-cache-dir .
 
-# Copy source
+# Copy source and maps
 COPY src/ src/
+COPY maps/ maps/
 
 # Run the simulator (PORT env var set by Cloud Run, default 8000 for local)
 ENV PORT=8000
