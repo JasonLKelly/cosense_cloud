@@ -22,11 +22,20 @@ BACKEND_URL=$(gcloud run services describe backend --region "$REGION" --project 
 }
 echo "  Backend: $BACKEND_URL"
 
+# Confluent Cloud URL (default for production)
+CONFLUENT_URL="${VITE_CONFLUENT_URL:-https://confluent.cloud/environments/env-x5ddpg/clusters/lkc-1pyorj/overview}"
+
+# Poll interval (default 1000ms for Cloud Run latency)
+POLL_INTERVAL="${VITE_POLL_INTERVAL:-1000}"
+
 # Build frontend
 echo "Building frontend..."
 cd control-center-webapp
 npm install --silent
-VITE_API_URL="$BACKEND_URL" npm run build
+VITE_API_URL="$BACKEND_URL" \
+  VITE_CONFLUENT_URL="$CONFLUENT_URL" \
+  VITE_POLL_INTERVAL="$POLL_INTERVAL" \
+  npm run build
 cd ..
 
 # Deploy to Firebase (from project root where firebase.json is)
