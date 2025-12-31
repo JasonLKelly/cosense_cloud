@@ -45,9 +45,9 @@ export interface Decision {
 }
 
 export interface AnomalyAlert {
-  alert_id: string
+  alert_id?: string  // May not be present from Flink
   alert_type: 'DECISION_RATE_SPIKE' | 'REPEATED_ROBOT_STOP' | 'SENSOR_DISAGREEMENT_SPIKE'
-  detected_at: number
+  detected_at: number | string  // Can be epoch ms or ISO string
   robot_id: string | null
   metric_name: string
   actual_value: number

@@ -59,8 +59,13 @@ export function MetricsPanel({
     }
   }
 
-  const formatAlertTime = (timestamp: number): string => {
-    const date = new Date(timestamp)
+  const parseTimestamp = (ts: number | string): number => {
+    if (typeof ts === 'number') return ts
+    return new Date(ts).getTime()
+  }
+
+  const formatAlertTime = (timestamp: number | string): string => {
+    const date = new Date(typeof timestamp === 'number' ? timestamp : timestamp)
     return date.toLocaleTimeString('en-US', {
       hour12: false,
       hour: '2-digit',
@@ -71,7 +76,7 @@ export function MetricsPanel({
 
   // Sort anomalies by detected_at (newest first) and limit to 20
   const sortedAnomalies = [...anomalies]
-    .sort((a, b) => b.detected_at - a.detected_at)
+    .sort((a, b) => parseTimestamp(b.detected_at) - parseTimestamp(a.detected_at))
     .slice(0, 20)
 
   const getRobotStateClass = (robot: Robot): string => {
@@ -239,9 +244,11 @@ export function MetricsPanel({
             {sortedAnomalies.length === 0 && (
               <div className="text-muted text-small">No alerts - system normal</div>
             )}
-            {sortedAnomalies.map((a) => (
+            {sortedAnomalies.map((a, idx) => {
+              const alertKey = a.alert_id || `${a.alert_type}-${a.detected_at}-${a.robot_id || idx}`
+              return (
               <div
-                key={a.alert_id}
+                key={alertKey}
                 className={`alert-item alert-${a.severity.toLowerCase()}`}
               >
                 <div className="alert-item-header">
@@ -250,12 +257,12 @@ export function MetricsPanel({
                   </span>
                   <span className="alert-type">{formatAlertType(a.alert_type)}</span>
                   <span className="alert-time">{formatAlertTime(a.detected_at)}</span>
-                  {onDismissAlert && (
+                  {onDismissAlert && a.alert_id && (
                     <button
                       className="btn-dismiss"
                       onClick={(e) => {
                         e.stopPropagation()
-                        onDismissAlert(a.alert_id)
+                        onDismissAlert(a.alert_id!)
                       }}
                       title="Dismiss alert"
                     >
@@ -287,7 +294,8 @@ export function MetricsPanel({
                   </button>
                 )}
               </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
