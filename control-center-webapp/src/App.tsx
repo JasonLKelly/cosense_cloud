@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Robot, AnomalyAlert, API_URL, CONFLUENT_URL } from './types'
+import { Robot, AnomalyAlert, API_URL, CONFLUENT_URL, POLL_INTERVAL } from './types'
 import { useSimState } from './hooks/useSimState'
 import { useGemini } from './hooks/useGemini'
 import { useMap } from './hooks/useMap'
@@ -13,6 +13,7 @@ import './styles.css'
 export default function App() {
   const [pollDecisions, setPollDecisions] = useState(true)
   const [pollAnomalies, setPollAnomalies] = useState(true)
+  const [pollInterval, setPollInterval] = useState(POLL_INTERVAL)
 
   const {
     state,
@@ -25,7 +26,7 @@ export default function App() {
     toggleConnectivity,
     stopRobot,
     startRobot,
-  } = useSimState({ pollDecisions, pollAnomalies })
+  } = useSimState({ pollDecisions, pollAnomalies, pollInterval })
 
   const {
     ask,
@@ -105,6 +106,18 @@ export default function App() {
               <span>Time: {state.sim_time.toFixed(1)}s</span>
             </>
           )}
+          <select
+            className="poll-select"
+            value={pollInterval}
+            onChange={(e) => setPollInterval(Number(e.target.value))}
+            title="Poll interval"
+          >
+            <option value={250}>250ms</option>
+            <option value={500}>500ms</option>
+            <option value={1000}>1s</option>
+            <option value={2000}>2s</option>
+            <option value={5000}>5s</option>
+          </select>
           <a
             href={CONFLUENT_URL}
             target="_blank"
